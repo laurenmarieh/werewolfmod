@@ -43,7 +43,7 @@ app.post('/', (req, res) => {
                 console.log(commandArray);
                 switch (commandArray[0]) {
                     case "new":
-                        
+
                         if (commandArray.length > 2) {
                             var newPoll = {
                                 title: commandArray[1],
@@ -53,7 +53,8 @@ app.post('/', (req, res) => {
                                 newPoll.choices.push({
                                     index: i - 1,
                                     name: commandArray[i],
-                                    votes: []
+                                    votes: [],
+                                    isClosed: false
                                 });
                             };
                             sendResponse(res, req.body.channel_name, "new poll has been created", newPoll);
@@ -65,7 +66,16 @@ app.post('/', (req, res) => {
                         sendResponse(res, req.body.channel_name, "results");
                         break;
                     case "close":
-                        sendResponse(res, req.body.channel_name, "close");
+                        // collection.findOneAndUpdate({"isClosed": false}, { $set: {"isClosed": true}}).toArray((error, result) => {
+                        //     if (error) {
+                        //         return response.status(500).send(error);
+                        //     }
+                        //     if (result.length) {
+
+                        //     }
+                        //     console.log(result);
+                        //     sendResponse(res, req.body.channel_name, "close");
+                        // });
                         break;
                     case "vote":
                         sendResponse(res, req.body.channel_name, "voted!");
@@ -101,7 +111,7 @@ const sendResponse = function (res, channelName, text, dbInsert) {
         }
     };
     if (dbInsert) {
-        collection.insertOne(data, (error, result) => {
+        collection.insertOne(dbInsert, (error, result) => {
             if (error) {
                 return response.status(500).send(error);
             }
