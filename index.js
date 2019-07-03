@@ -36,93 +36,102 @@ app.post('/', (req, res) => {
     console.log(req.body);
     var slashCommand = req.body.command;
     switch (slashCommand) {
-        case "/werepoll":
+        case "/werewolf":
             var command = req.body.text;
             var commandArray = command.split(' ');
             if (commandArray.length) {
                 console.log(commandArray);
                 switch (commandArray[0]) {
                     case "new":
-
                         if (commandArray.length > 2) {
                             var newPoll = {
                                 title: commandArray[1],
-                                choices: []
+                                choices: [],
+                                isClosed: false
                             };
                             for (var i = 2; i < commandArray.length; i++) {
                                 newPoll.choices.push({
                                     index: i - 1,
                                     name: commandArray[i],
-                                    votes: [],
-                                    isClosed: false
+                                    votes: []
                                 });
                             };
-                            sendResponse(res, req.body.channel_name, "new poll has been created", newPoll);
+                            sendResponse(res, "new poll has been created", newPoll);
                         } else {
-                            sendResponse(res, req.body.channel_name, "poll format must be /werepoll <<Title>> <<choice1>> <<choice2>>");
+                            sendResponse(res, "poll format must be /werepoll <<Title>> <<choice1>> <<choice2>>");
                         }
                         break;
                     case "results":
-                        sendResponse(res, req.body.channel_name, "results");
+                        sendResponse(res, "results");
                         break;
                     case "close":
-                        // collection.findOneAndUpdate({"isClosed": false}, { $set: {"isClosed": true}}).toArray((error, result) => {
-                        //     if (error) {
-                        //         return response.status(500).send(error);
-                        //     }
-                        //     if (result.length) {
+                        collection.findOneAndUpdate({
+                                "isClosed": false
+                            }, {
+                                $set: {
+                                    "isClosed": true
+                                }
+                            })
+                            .then((response) => {
+                                if (response.ok) {
+                                    sendResponse(res, "close");
+                                } else {
+                                    res.status(500).send(response);
+                                }
 
-                        //     }
-                        //     console.log(result);
-                        //     sendResponse(res, req.body.channel_name, "close");
-                        // });
+                            });
                         break;
                     case "vote":
-                        sendResponse(res, req.body.channel_name, "voted!");
+                        if (commandArray.length > 1) {
+                            var selectedVote = parseInt(commandArray[1]);
+                            collection.findOne({
+                                    "isClosed": false
+                                })
+                                .then((document) => {
+                                    if (document) {
+                                        document.choices[selectedVote - 1].votes.push(req.body.user_name);
+                                        collection.findOneAndReplace({
+                                                "_id": document._id
+                                            }, document)
+                                            .then((response) => {
+                                                console.log(response);
+                                                sendResponse(res, "vote has been recorded");
+                                            })
+                                    } else {
+                                        sendResponse(res, "whoops something went wrong");
+                                    }
+                                });
+                        } else {
+                            sendResponse(res, "Choose someone to vote for.");
+                        }
                         break;
                     default:
-                        sendResponse(res, req.body.channel_name, "unable to determine command");
+                        sendResponse(res, "unable to determine command");
                         break;
                 }
             }
 
             break;
         default:
-            var data = {
-                form: {
-                    token: process.env.SLACK_AUTH_TOKEN,
-                    channel: req.body.channel_name ? `#${req.body.channel_name}` : "#general",
-                    text: "I don't recognize that command"
-                }
-            };
-            request.post('https://slack.com/api/chat.postMessage', data, function (error, response, body) {
-                res.json();
-            });
+            sendResponse(res, "I don't recognize that command")
             break;
     }
 });
 
-const sendResponse = function (res, channelName, text, dbInsert) {
-    var data = {
-        form: {
-            token: process.env.SLACK_AUTH_TOKEN,
-            channel: channelName ? `#${channelName}` : "#general",
-            text: `You sent me: ${text}`
-        }
-    };
+const sendResponse = function (res, text, dbInsert) {
     if (dbInsert) {
         collection.insertOne(dbInsert, (error, result) => {
             if (error) {
                 return response.status(500).send(error);
             }
-            request.post('https://slack.com/api/chat.postMessage', data, function (error, response, body) {
-                res.json();
+            res.status(200).send({
+                "text": text
             });
         });
     } else {
-        request.post('https://slack.com/api/chat.postMessage', data, function (error, response, body) {
-            res.json();
-        });
+        res.status(200).send({
+            "text": text
+        });;
     }
 
 }
