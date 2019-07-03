@@ -103,6 +103,11 @@ app.post('/', (req, res) => {
                                 })
                                 .then((document) => {
                                     if (document) {
+                                        // remove existing vote
+                                        document.choices.forEach((choice) => {
+                                            choice.votes = choice.votes.filter(vote => vote !== req.body.user_name);
+                                        });
+                                        // add new vote 
                                         document.choices[selectedVote - 1].votes.push(req.body.user_name);
                                         collection.findOneAndReplace({
                                                 "_id": document._id
