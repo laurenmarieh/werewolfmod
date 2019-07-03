@@ -56,13 +56,26 @@ app.post('/', (req, res) => {
                                     votes: []
                                 });
                             };
-                            sendResponse(res, "new poll has been created", newPoll);
+                            collection.insertOne(newPoll, (error, result) => {
+                                if (error) {
+                                    return response.status(500).send(error);
+                                }
+                                sendResponse(res, "Poll Created!");
+                            });
                         } else {
-                            sendResponse(res, "poll format must be /werepoll <<Title>> <<choice1>> <<choice2>>");
+                            sendResponse(res, "poll format must be /werewolf <<Title>> <<choice1>> <<choice2>>");
                         }
                         break;
                     case "results":
-                        sendResponse(res, "results");
+                        collection.findOne({
+                                "isClosed": false
+                            })
+                            .then((poll) => {
+                                var displayText = getFormattedPollResults(poll);
+                                res.status(200).send({
+                                    "text": displayText
+                                });
+                            });
                         break;
                     case "close":
                         collection.findOneAndUpdate({
@@ -74,7 +87,8 @@ app.post('/', (req, res) => {
                             })
                             .then((response) => {
                                 if (response.ok) {
-                                    sendResponse(res, "close");
+                                    var pollResults = "Poll closed! \n" + getFormattedPollResults(response.value);
+                                    sendResponse(res, pollResults);
                                 } else {
                                     res.status(500).send(response);
                                 }
@@ -98,40 +112,45 @@ app.post('/', (req, res) => {
                                                 sendResponse(res, "vote has been recorded");
                                             })
                                     } else {
-                                        sendResponse(res, "whoops something went wrong");
+                                        sendErrorResponse(res);
                                     }
                                 });
                         } else {
-                            sendResponse(res, "Choose someone to vote for.");
+                            sendErrorResponse(res);
                         }
                         break;
                     default:
-                        sendResponse(res, "unable to determine command");
+                        sendErrorResponse(res);
                         break;
                 }
             }
 
             break;
         default:
-            sendResponse(res, "I don't recognize that command")
+            sendErrorResponse(res);
             break;
     }
 });
 
-const sendResponse = function (res, text, dbInsert) {
-    if (dbInsert) {
-        collection.insertOne(dbInsert, (error, result) => {
-            if (error) {
-                return response.status(500).send(error);
-            }
-            res.status(200).send({
-                "text": text
-            });
-        });
-    } else {
-        res.status(200).send({
-            "text": text
-        });;
-    }
+const sendErrorResponse = (res) => {
+    res.status(200).send({
+        "text": "Whoops! Something went wrong :shrug:"
+    });
+};
 
+const sendResponse = (res, text) => {
+    res.status(200).send({
+        "text": text
+    });
+}
+
+const getFormattedPollResults = (poll) => {
+    var displayText = `*${poll.title}*\n`;
+    poll.choices.forEach((choice) => {
+        displayText += `${choice.name} - ${choice.votes.length}\n`;
+        choice.votes.forEach((vote) => {
+            displayText += `    ${vote}\n`;
+        });
+    });
+    return displayText;
 }
