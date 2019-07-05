@@ -99,15 +99,15 @@ const createNewPoll = (res, requestBody, commandArray) => {
         var newPoll = {
             teamId: requestBody.team_id,
             channelId: requestBody.channel_id,
-            title: requestBody.text.match(/'([^"]+)'/)[1],
+            title: requestBody.text.match(/"([^']+)"/)[1],
             choices: [],
             isClosed: false
         };
-        var choiceSplit = requestBody.text.split(commandArray[1]);
+        var choiceSplit = requestBody.text.split("\"");
         if (choiceSplit.length < 2) {
             sendErrorResponse(res);
         }
-        var choicesArray = choiceSplit[1].split(",");
+        var choicesArray = choiceSplit[2].split(",");
         for (var i = 0; i < choicesArray.length; i++) {
             newPoll.choices.push({
                 index: i - 1,
