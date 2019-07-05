@@ -18,6 +18,7 @@ app.listen(process.env.PORT || PORT, function () {
         useNewUrlParser: true
     }, (error, client) => {
         if (error) {
+            console.log(`Unable to connect to ${process.env.DATABASE_CONNECTION}`);
             throw error;
         }
         database = client.db(DATABASE_NAME);
