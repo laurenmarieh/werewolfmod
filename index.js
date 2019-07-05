@@ -34,7 +34,6 @@ app.use(bodyParser.urlencoded({
 app.use(bodyParser.json());
 
 app.post('/', (req, res) => {
-    console.log(req.body);
     var slashCommand = req.body.command;
     switch (slashCommand) {
         case "/werewolf":
