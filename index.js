@@ -37,37 +37,17 @@ app.post('/', (req, res) => {
     var slashCommand = req.body.command;
     switch (slashCommand) {
         case "/werewolf":
-            var command = req.body.text;
-            var commandArray = command.split(' ');
+            var requestBody = req.body;
+            var commandArray = requestBody.text.split(' ');
             if (commandArray.length) {
-                console.log(commandArray);
                 switch (commandArray[0]) {
                     case "new":
-                        if (commandArray.length > 2) {
-                            var newPoll = {
-                                title: commandArray[1],
-                                choices: [],
-                                isClosed: false
-                            };
-                            for (var i = 2; i < commandArray.length; i++) {
-                                newPoll.choices.push({
-                                    index: i - 1,
-                                    name: commandArray[i],
-                                    votes: []
-                                });
-                            };
-                            collection.insertOne(newPoll, (error, result) => {
-                                if (error) {
-                                    return response.status(500).send(error);
-                                }
-                                sendResponse(res, "Poll Created!");
-                            });
-                        } else {
-                            sendResponse(res, "poll format must be /werewolf <<Title>> <<choice1>> <<choice2>>");
-                        }
+                        createNewPoll(res, requestBody, commandArray);
                         break;
                     case "results":
                         collection.findOne({
+                                "teamId": requestBody.team_id,
+                                "channelId": requestBody.channel_id,
                                 "isClosed": false
                             })
                             .then((poll) => {
@@ -79,6 +59,8 @@ app.post('/', (req, res) => {
                         break;
                     case "close":
                         collection.findOneAndUpdate({
+                                "teamId": requestBody.team_id,
+                                "channelId": requestBody.channel_id,
                                 "isClosed": false
                             }, {
                                 $set: {
@@ -88,7 +70,7 @@ app.post('/', (req, res) => {
                             .then((response) => {
                                 if (response.ok) {
                                     var pollResults = "Poll closed! \n" + getFormattedPollResults(response.value);
-                                    sendResponse(res, pollResults);
+                                    sendPublicResponse(res, pollResults);
                                 } else {
                                     res.status(500).send(response);
                                 }
@@ -96,33 +78,7 @@ app.post('/', (req, res) => {
                             });
                         break;
                     case "vote":
-                        if (commandArray.length > 1) {
-                            var selectedVote = parseInt(commandArray[1]);
-                            collection.findOne({
-                                    "isClosed": false
-                                })
-                                .then((document) => {
-                                    if (document) {
-                                        // remove existing vote
-                                        document.choices.forEach((choice) => {
-                                            choice.votes = choice.votes.filter(vote => vote !== req.body.user_name);
-                                        });
-                                        // add new vote 
-                                        document.choices[selectedVote - 1].votes.push(req.body.user_name);
-                                        collection.findOneAndReplace({
-                                                "_id": document._id
-                                            }, document)
-                                            .then((response) => {
-                                                console.log(response);
-                                                sendResponse(res, "vote has been recorded");
-                                            })
-                                    } else {
-                                        sendErrorResponse(res);
-                                    }
-                                });
-                        } else {
-                            sendErrorResponse(res);
-                        }
+                        vote(res, requestBody, commandArray);
                         break;
                     default:
                         sendErrorResponse(res);
@@ -137,6 +93,69 @@ app.post('/', (req, res) => {
     }
 });
 
+const createNewPoll = (res, requestBody, commandArray) => {
+    if (commandArray.length > 2) {
+        var newPoll = {
+            teamId: requestBody.team_id,
+            channelId: requestBody.channel_id,
+            title: requestBody.text.match(/'([^"]+)'/)[1],
+            choices: [],
+            isClosed: false
+        };
+        var choiceSplit = requestBody.text.split(commandArray[1]);
+        if (choiceSplit.length < 2) {
+            sendErrorResponse(res);
+        }
+        var choicesArray = choiceSplit[1].split(",");
+        for (var i = 0; i < choicesArray.length; i++) {
+            newPoll.choices.push({
+                index: i - 1,
+                name: choicesArray[i].trim(),
+                votes: []
+            });
+        };
+        collection.insertOne(newPoll, (error, result) => {
+            if (error) {
+                return response.status(500).send(error);
+            }
+            sendPublicResponse(res, "Poll Created!\n" + getFormattedPollResults(newPoll));
+        });
+    } else {
+        sendErrorResponse(res);
+    }
+};
+
+const vote = (res, requestBody, commandArray) => {
+    if (commandArray.length > 1) {
+        var selectedVote = parseInt(commandArray[1]);
+        collection.findOne({
+                "teamId": requestBody.team_id,
+                "channelId": requestBody.channel_id,
+                "isClosed": false
+            })
+            .then((document) => {
+                if (document) {
+                    // remove existing vote
+                    document.choices.forEach((choice) => {
+                        choice.votes = choice.votes.filter(vote => vote !== requestBody.user_name);
+                    });
+                    // add new vote 
+                    document.choices[selectedVote - 1].votes.push(requestBody.user_name);
+                    collection.findOneAndReplace({
+                            "_id": document._id
+                        }, document)
+                        .then((response) => {
+                            sendResponse(res, "vote has been recorded");
+                        })
+                } else {
+                    sendErrorResponse(res);
+                }
+            });
+    } else {
+        sendErrorResponse(res);
+    }
+};
+
 const sendErrorResponse = (res) => {
     res.status(200).send({
         "text": "Whoops! Something went wrong :shrug:"
@@ -145,6 +164,13 @@ const sendErrorResponse = (res) => {
 
 const sendResponse = (res, text) => {
     res.status(200).send({
+        "text": text
+    });
+}
+
+const sendPublicResponse = (res, text) => {
+    res.status(200).send({
+        "response_type": "in_channel",
         "text": text
     });
 }
