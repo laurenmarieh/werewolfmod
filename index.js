@@ -109,7 +109,7 @@ const createNewPoll = (res, requestBody, commandArray) => {
         var choicesArray = choiceSplit[2].split(",");
         for (var i = 0; i < choicesArray.length; i++) {
             newPoll.choices.push({
-                index: i - 1,
+                index: i + 1,
                 name: choicesArray[i].trim(),
                 votes: []
             });
@@ -118,7 +118,7 @@ const createNewPoll = (res, requestBody, commandArray) => {
             if (error) {
                 return response.status(500).send(error);
             }
-            sendPublicResponse(res, "Poll Created!\n" + getFormattedPollResults(newPoll));
+            sendPublicResponse(res, "Poll Created!\n" + getFormattedPollResults(newPoll, false));
         });
     } else {
         sendErrorResponse(res);
@@ -137,10 +137,10 @@ const vote = (res, requestBody, commandArray) => {
                 if (document) {
                     // remove existing vote
                     document.choices.forEach((choice) => {
-                        choice.votes = choice.votes.filter(vote => vote !== requestBody.user_name);
+                        choice.votes = choice.votes.filter(vote => vote !== requestBody.user_id);
                     });
                     // add new vote 
-                    document.choices[selectedVote - 1].votes.push(requestBody.user_name);
+                    document.choices[selectedVote - 1].votes.push(requestBody.user_id);
                     collection.findOneAndReplace({
                             "_id": document._id
                         }, document)
@@ -175,13 +175,19 @@ const sendPublicResponse = (res, text) => {
     });
 }
 
-const getFormattedPollResults = (poll) => {
+const getFormattedPollResults = (poll, showVotes = true) => {
     var displayText = `*${poll.title}*\n`;
     poll.choices.forEach((choice) => {
-        displayText += `${choice.name} - ${choice.votes.length}\n`;
-        choice.votes.forEach((vote) => {
-            displayText += `    ${vote}\n`;
-        });
+        displayText += `*${choice.index}* ${choice.name}`
+        if (showVotes) {
+            displayText += ` - ${choice.votes.length}\n`;
+            choice.votes.forEach((vote) => {
+                displayText += `            <@${vote}>\n`;
+            });
+        } else {
+            displayText += '\n';
+        }
+
     });
     return displayText;
 }
