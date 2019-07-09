@@ -86,7 +86,7 @@ app.post('/', (req, res) => {
                 }
             }
         case "/modspeak":
-                const modText = `* ${requestBody.text.replace("\n","*\n*")} *`;
+                const modText = `* ${req.body.text.replace("\n","*\n*")} *`;
                 res.status(200).send({
                     "text": modText
                 });
