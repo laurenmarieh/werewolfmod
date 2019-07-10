@@ -93,6 +93,55 @@ app.post('/', (req, res) => {
     }
 });
 
+app.get('/slackauth', (req, res) => {
+    console.log(req.query);
+    request.post("https://slack.com/api/oauth.access", {
+        form: {
+            client_id: process.env.SLACK_CLIENT_ID,
+            client_secret: process.env.SLACK_CLIENT_SECRET,
+            code: req.query.code,
+            redirect_uri: "https://09fa5881.ngrok.io/slackauth"
+        }
+    }, (error, response, rawBody) => {
+        if (error) {
+            console.log(error);
+        }
+        const body = JSON.parse(rawBody);
+        if (body.ok) {
+            var authCollection = database.collection('auth');
+            var newAuth = {
+                accessToken: body.access_token,
+                scope: body.scope,
+                userId: body.user_id,
+                teamName: body.team_name,
+                teamId: body.team_id,
+                bot: {
+                    botUserId: body.bot.bot_user_id,
+                    botAccessToken: body.bot.bot_access_token
+                }
+            };
+            authCollection.insertOne(newAuth, (error, result) => {
+                if (error) {
+                    return response.status(500).send(error);
+                }
+                res.status(200).send(`<!DOCTYPE html>
+                <html>
+                    <body>
+                        <h1>You have added Werewolf to Slack!</h1>
+                    </body>
+                </html>`);
+            });
+        } else {
+            res.status(200).send(`<!DOCTYPE html>
+                <html>
+                    <body>
+                        <p>${body.error}</p>
+                    </body>
+                </html>`);
+        }
+    });
+});
+
 const createNewPoll = (res, requestBody, commandArray) => {
     if (commandArray.length > 2) {
         var newPoll = {
@@ -166,14 +215,14 @@ const sendResponse = (res, text) => {
     res.status(200).send({
         "text": text
     });
-}
+};
 
 const sendPublicResponse = (res, text) => {
     res.status(200).send({
         "response_type": "in_channel",
         "text": text
     });
-}
+};
 
 const getFormattedPollResults = (poll, showVotes = true) => {
     var displayText = `*${poll.title}*\n`;
@@ -190,4 +239,4 @@ const getFormattedPollResults = (poll, showVotes = true) => {
 
     });
     return displayText;
-}
+};
