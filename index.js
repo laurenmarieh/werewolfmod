@@ -85,11 +85,12 @@ app.post('/', (req, res) => {
                         break;
                 }
             }
+            break;
         case "/modspeak":
-                const modText = `* ${req.body.text.replace("\n","*\n*")} *`;
-                res.status(200).send({
-                    "text": modText
-                });
+            const modText = `*${req.body.text.replace("\n","*\n*")}*`;
+            res.status(200).send({
+                "text": modText
+            });
             break;
         default:
             sendErrorResponse(res);
@@ -126,7 +127,7 @@ app.get('/slackauth', (req, res) => {
             };
             authCollection.insertOne(newAuth, (error, result) => {
                 if (error) {
-                    return response.status(500).send(error);
+                    res.status(500).send(error);
                 }
                 res.status(200).send(`<!DOCTYPE html>
                 <html>
@@ -169,9 +170,11 @@ const createNewPoll = (res, requestBody, commandArray) => {
         };
         collection.insertOne(newPoll, (error, result) => {
             if (error) {
-                return response.status(500).send(error);
+                sendErrorResponse(res);
+            } else {
+                sendPublicResponse(res, "Poll Created!\n" + getFormattedPollResults(newPoll, false));
             }
-            sendPublicResponse(res, "Poll Created!\n" + getFormattedPollResults(newPoll, false));
+
         });
     } else {
         sendErrorResponse(res);
