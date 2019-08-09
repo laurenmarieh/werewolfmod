@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const request = require("request");
 const mongoClient = require("mongodb").MongoClient;
 const objectId = require("mongodb").ObjectID;
-
+// const { db } = require('./dbUtils');
 // Creates express app
 const app = express();
 // The port used for Express server
@@ -87,8 +87,9 @@ app.post('/', (req, res) => {
             }
             break;
         case "/modspeak":
-            const modText = `*${req.body.text.replace("\n","*\n*")}*`;
+            const modText = `*${replaceAll(req.body.text.trim(),"\n","*\n*")}*`;
             res.status(200).send({
+                "response_type": "in_channel",
                 "text": modText
             });
             break;
@@ -148,19 +149,23 @@ app.get('/slackauth', (req, res) => {
 });
 
 const createNewPoll = (res, requestBody, commandArray) => {
+    let text = requestBody.text;
+    text = replaceAll(text, '“', '"');
+    text = replaceAll(text, '”', '"');
+    const textArray = text.split('"');
+
     if (commandArray.length > 2) {
         var newPoll = {
             teamId: requestBody.team_id,
             channelId: requestBody.channel_id,
-            title: requestBody.text.match(/"([^']+)"/)[1],
+            title: textArray[1],
             choices: [],
             isClosed: false
         };
-        var choiceSplit = requestBody.text.split("\"");
-        if (choiceSplit.length < 2) {
+        if (textArray.length < 2) {
             sendErrorResponse(res);
         }
-        var choicesArray = choiceSplit[2].split(",");
+        var choicesArray = textArray[2].split(",");
         for (var i = 0; i < choicesArray.length; i++) {
             newPoll.choices.push({
                 index: i + 1,
@@ -230,6 +235,14 @@ const sendPublicResponse = (res, text) => {
         "text": text
     });
 };
+
+function escapeRegExp(str) {
+    return str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+}
+
+function replaceAll(str, find, replace) {
+    return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
+}
 
 const getFormattedPollResults = (poll, showVotes = true) => {
     var displayText = `*${poll.title}*\n`;
