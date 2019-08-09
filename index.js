@@ -1,121 +1,124 @@
+
 require('dotenv').config();
 
 const express = require('express');
 const bodyParser = require('body-parser');
-const request = require("request");
-const mongoClient = require("mongodb").MongoClient;
-const objectId = require("mongodb").ObjectID;
-// const { db } = require('./dbUtils');
+const request = require('request');
+const mongoClient = require('mongodb').MongoClient;
+const objectId = require('mongodb').ObjectID;
+const { pollFuncs } = require('./pollFunctions');
+const { resFuncs } = require('./responseFunctions');
+const { utils } = require('./utils');
+const { db } = require('./dbUtils');
 // Creates express app
 const app = express();
 // The port used for Express server
 const PORT = 3000;
-// The name of the database 
-const DATABASE_NAME = "werewolf";
+// The name of the database
+const DATABASE_NAME = 'werewolf';
 // Starts server
-app.listen(process.env.PORT || PORT, function () {
-    mongoClient.connect(process.env.DATABASE_CONNECTION, {
-        useNewUrlParser: true
-    }, (error, client) => {
-        if (error) {
-            console.log(`Unable to connect to ${process.env.DATABASE_CONNECTION}`);
-            throw error;
-        }
-        database = client.db(DATABASE_NAME);
-        collection = database.collection("polls");
-        console.log("Connected to `" + DATABASE_NAME + "`!");
-    });
-    console.log('Bot is listening on port ' + PORT);
+app.listen(process.env.PORT || PORT, () => {
+    // mongoClient.connect(process.env.DATABASE_CONNECTION, {
+    //     useNewUrlParser: true
+    // }, (error, client) => {
+    //     if (error) {
+    //         console.log(`Unable to connect to ${process.env.DATABASE_CONNECTION}`);
+    //         throw error;
+    //     }
+    //     database = client.db(DATABASE_NAME);
+    //     collection = database.collection("polls");
+    //     console.log("Connected to `" + DATABASE_NAME + "`!");
+    // });
+    console.log(`Bot is listening on port ${PORT}`);
 });
 
 app.use(bodyParser.urlencoded({
-    extended: true
+    extended: true,
 }));
 app.use(bodyParser.json());
 
 app.post('/', (req, res) => {
-    var slashCommand = req.body.command;
+    const slashCommand = req.body.command;
     switch (slashCommand) {
-        case "/werewolf":
-            var requestBody = req.body;
-            var commandArray = requestBody.text.split(' ');
+        case '/werewolf':
+            const requestBody = req.body;
+            const commandArray = requestBody.text.split(' ');
             if (commandArray.length) {
                 switch (commandArray[0]) {
-                    case "new":
-                        createNewPoll(res, requestBody, commandArray);
+                    case 'new':
+                        pollFuncs.createNewPoll(res, requestBody, commandArray);
                         break;
-                    case "results":
+                    case 'results':
                         collection.findOne({
-                                "teamId": requestBody.team_id,
-                                "channelId": requestBody.channel_id,
-                                "isClosed": false
-                            })
+                            teamId: requestBody.team_id,
+                            channelId: requestBody.channel_id,
+                            isClosed: false,
+                        })
                             .then((poll) => {
-                                var displayText = getFormattedPollResults(poll);
+                                const displayText = pollFuncs.getFormattedPollResults(poll);
                                 res.status(200).send({
-                                    "text": displayText
+                                    text: displayText,
                                 });
                             });
                         break;
-                    case "close":
+                    case 'close':
                         collection.findOneAndUpdate({
-                                "teamId": requestBody.team_id,
-                                "channelId": requestBody.channel_id,
-                                "isClosed": false
-                            }, {
+                            teamId: requestBody.team_id,
+                            channelId: requestBody.channel_id,
+                            isClosed: false,
+                        }, {
                                 $set: {
-                                    "isClosed": true
-                                }
+                                    isClosed: true,
+                                },
                             })
                             .then((response) => {
                                 if (response.ok) {
-                                    var pollResults = "Poll closed! \n" + getFormattedPollResults(response.value);
-                                    sendPublicResponse(res, pollResults);
+                                    const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(response.value)}`;
+                                    resFuncs.sendPublicResponse(res, pollResults);
                                 } else {
                                     res.status(500).send(response);
                                 }
-
                             });
                         break;
-                    case "vote":
-                        vote(res, requestBody, commandArray);
+                    case 'vote':
+                        pollFuncs.vote(res, requestBody, commandArray);
                         break;
                     default:
-                        sendErrorResponse(res);
+                        resFuncs.sendErrorResponse(res);
                         break;
                 }
             }
             break;
-        case "/modspeak":
-            const modText = `*${replaceAll(req.body.text.trim(),"\n","*\n*")}*`;
+        case '/modspeak':
+            const modText = `*${utils.replaceAll(req.body.text.trim(), '\n', '*\n*')}*`;
             res.status(200).send({
-                "response_type": "in_channel",
-                "text": modText
+                response_type: 'in_channel',
+                text: modText,
             });
             break;
         default:
-            sendErrorResponse(res);
+            resFuncs.sendErrorResponse(res);
             break;
     }
 });
 
 app.get('/slackauth', (req, res) => {
     console.log(req.query);
-    request.post("https://slack.com/api/oauth.access", {
+    request.post('https://slack.com/api/oauth.access', {
         form: {
             client_id: process.env.SLACK_CLIENT_ID,
             client_secret: process.env.SLACK_CLIENT_SECRET,
             code: req.query.code,
-            redirect_uri: "https://09fa5881.ngrok.io/slackauth"
-        }
+            redirect_uri: 'https://09fa5881.ngrok.io/slackauth',
+        },
     }, (error, response, rawBody) => {
         if (error) {
             console.log(error);
         }
         const body = JSON.parse(rawBody);
         if (body.ok) {
-            var authCollection = database.collection('auth');
-            var newAuth = {
+            const authCollection = database.collection('auth');
+            const newAuth = {
                 accessToken: body.access_token,
                 scope: body.scope,
                 userId: body.user_id,
@@ -123,8 +126,8 @@ app.get('/slackauth', (req, res) => {
                 teamId: body.team_id,
                 bot: {
                     botUserId: body.bot.bot_user_id,
-                    botAccessToken: body.bot.bot_access_token
-                }
+                    botAccessToken: body.bot.bot_access_token,
+                },
             };
             authCollection.insertOne(newAuth, (error, result) => {
                 if (error) {
@@ -147,116 +150,3 @@ app.get('/slackauth', (req, res) => {
         }
     });
 });
-
-const createNewPoll = (res, requestBody, commandArray) => {
-    let text = requestBody.text;
-    text = replaceAll(text, '“', '"');
-    text = replaceAll(text, '”', '"');
-    const textArray = text.split('"');
-
-    if (commandArray.length > 2) {
-        var newPoll = {
-            teamId: requestBody.team_id,
-            channelId: requestBody.channel_id,
-            title: textArray[1],
-            choices: [],
-            isClosed: false
-        };
-        if (textArray.length < 2) {
-            sendErrorResponse(res);
-        }
-        var choicesArray = textArray[2].split(",");
-        for (var i = 0; i < choicesArray.length; i++) {
-            newPoll.choices.push({
-                index: i + 1,
-                name: choicesArray[i].trim(),
-                votes: []
-            });
-        };
-        collection.insertOne(newPoll, (error, result) => {
-            if (error) {
-                sendErrorResponse(res);
-            } else {
-                sendPublicResponse(res, "Poll Created!\n" + getFormattedPollResults(newPoll, false));
-            }
-
-        });
-    } else {
-        sendErrorResponse(res);
-    }
-};
-
-const vote = (res, requestBody, commandArray) => {
-    if (commandArray.length > 1) {
-        var selectedVote = parseInt(commandArray[1]);
-        collection.findOne({
-                "teamId": requestBody.team_id,
-                "channelId": requestBody.channel_id,
-                "isClosed": false
-            })
-            .then((document) => {
-                if (document) {
-                    // remove existing vote
-                    document.choices.forEach((choice) => {
-                        choice.votes = choice.votes.filter(vote => vote !== requestBody.user_id);
-                    });
-                    // add new vote 
-                    document.choices[selectedVote - 1].votes.push(requestBody.user_id);
-                    collection.findOneAndReplace({
-                            "_id": document._id
-                        }, document)
-                        .then((response) => {
-                            sendResponse(res, "vote has been recorded");
-                        })
-                } else {
-                    sendErrorResponse(res);
-                }
-            });
-    } else {
-        sendErrorResponse(res);
-    }
-};
-
-const sendErrorResponse = (res) => {
-    res.status(200).send({
-        "text": "Whoops! Something went wrong :shrug:"
-    });
-};
-
-const sendResponse = (res, text) => {
-    res.status(200).send({
-        "text": text
-    });
-};
-
-const sendPublicResponse = (res, text) => {
-    res.status(200).send({
-        "response_type": "in_channel",
-        "text": text
-    });
-};
-
-function escapeRegExp(str) {
-    return str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
-}
-
-function replaceAll(str, find, replace) {
-    return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
-}
-
-const getFormattedPollResults = (poll, showVotes = true) => {
-    var displayText = `*${poll.title}*\n`;
-    poll.choices.forEach((choice) => {
-        displayText += `*${choice.index}* ${choice.name}`
-        if (showVotes) {
-            displayText += ` - ${choice.votes.length}\n`;
-            choice.votes.forEach((vote) => {
-                displayText += `            <@${vote}>\n`;
-            });
-        } else {
-            displayText += '\n';
-        }
-
-    });
-    return displayText;
-};
