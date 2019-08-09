@@ -80,6 +80,9 @@ app.post('/', (req, res) => {
                     case "vote":
                         vote(res, requestBody, commandArray);
                         break;
+                    case "unvote": 
+                        unvote(res, requestBody);
+                        break;
                     default:
                         sendErrorResponse(res);
                         break;
@@ -185,6 +188,30 @@ const createNewPoll = (res, requestBody, commandArray) => {
         sendErrorResponse(res);
     }
 };
+
+const unvote = (res, requestBody) => {
+    collection.findOne({
+        "teamId": requestBody.team_id,
+        "channelId": requestBody.channel_id,
+        "isClosed": false
+    })
+    .then((document) => {
+        if (document) {
+            // remove existing vote
+            document.choices.forEach((choice) => {
+                choice.votes = choice.votes.filter(vote => vote !== requestBody.user_id);
+            });
+            collection.findOneAndReplace({
+                    "_id": document._id
+                }, document)
+                .then((response) => {
+                    sendResponse(res, "vote has been un-recorded");
+                })
+        } else {
+            sendErrorResponse(res);
+        }
+    });   
+}
 
 const vote = (res, requestBody, commandArray) => {
     if (commandArray.length > 1) {
