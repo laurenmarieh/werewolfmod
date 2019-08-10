@@ -81,6 +81,10 @@ app.post('/', (req, res) => {
                         vote(res, requestBody, commandArray);
                         break;
                     case "unvote":
+                    case "remove":
+                    case "annul":
+                    case "recind":
+                    case "repeal": 
                         unvote(res, requestBody);
                         break;
                     default:
