@@ -4,8 +4,6 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const request = require('request');
-const mongoClient = require('mongodb').MongoClient;
-const objectId = require('mongodb').ObjectID;
 const pollFuncs = require('./pollFunctions');
 const resFuncs = require('./responseFunctions');
 const utils = require('./utils');
@@ -14,21 +12,8 @@ const db = require('./dbUtils');
 const app = express();
 // The port used for Express server
 const PORT = 3000;
-// The name of the database
-const DATABASE_NAME = 'werewolf';
 // Starts server
 app.listen(process.env.PORT || PORT, () => {
-    // mongoClient.connect(process.env.DATABASE_CONNECTION, {
-    //     useNewUrlParser: true
-    // }, (error, client) => {
-    //     if (error) {
-    //         console.log(`Unable to connect to ${process.env.DATABASE_CONNECTION}`);
-    //         throw error;
-    //     }
-    //     database = client.db(DATABASE_NAME);
-    //     collection = database.collection("polls");
-    //     console.log("Connected to `" + DATABASE_NAME + "`!");
-    // });
     console.log(`Bot is listening on port ${PORT}`);
 });
 
