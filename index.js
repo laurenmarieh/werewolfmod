@@ -71,7 +71,7 @@ app.post('/', (req, res) => {
                             channelId: requestBody.channel_id,
                         })
                             .then((response) => {
-                                if (response.rowCount == 1) {
+                                if (response.rowCount > 0) {
                                     const poll = pollFuncs.getPollfromResultRow(response.rows[0]);
                                     const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(poll)}`;
                                     resFuncs.sendPublicResponse(res, pollResults);
