@@ -63,7 +63,7 @@ const replaceChoices = (req) => {
 
 const instertAuth = (req) => {
     const { accessToken, scope, userId, teamName, teamId, bot } = req;
-    cosnt { botUserId, botAccessToken } = bot;
+    const { botUserId, botAccessToken } = bot;
     db.query('INSERT INTO public.auth' +
         '(access_token, "scope", user_id, team_name, team_id, bot_user_id, bot_access_token)' +
         'VALUES($1, $2, $3, $4, $5, $6, $7)',
