@@ -80,7 +80,7 @@ app.post('/', (req, res) => {
                     case "vote":
                         vote(res, requestBody, commandArray);
                         break;
-                    case "unvote": 
+                    case "unvote":
                         unvote(res, requestBody);
                         break;
                     default:
@@ -158,32 +158,44 @@ const createNewPoll = (res, requestBody, commandArray) => {
     const textArray = text.split('"');
 
     if (commandArray.length > 2) {
-        var newPoll = {
-            teamId: requestBody.team_id,
-            channelId: requestBody.channel_id,
-            title: textArray[1],
-            choices: [],
-            isClosed: false
-        };
-        if (textArray.length < 2) {
-            sendErrorResponse(res);
-        }
-        var choicesArray = textArray[2].split(",");
-        for (var i = 0; i < choicesArray.length; i++) {
-            newPoll.choices.push({
-                index: i + 1,
-                name: choicesArray[i].trim(),
-                votes: []
-            });
-        };
-        collection.insertOne(newPoll, (error, result) => {
-            if (error) {
-                sendErrorResponse(res);
-            } else {
-                sendPublicResponse(res, "Poll Created!\n" + getFormattedPollResults(newPoll, false));
-            }
+        collection.findOne({
+                "teamId": requestBody.team_id,
+                "channelId": requestBody.channel_id,
+                "isClosed": false
+            })
+            .then((document) => {
+                if (document) {
+                    sendResponse(res, 'Sorry, only one poll at a time people.');
+                } else {
+                    var newPoll = {
+                        teamId: requestBody.team_id,
+                        channelId: requestBody.channel_id,
+                        title: textArray[1],
+                        choices: [],
+                        isClosed: false
+                    };
+                    if (textArray.length < 2) {
+                        sendErrorResponse(res);
+                    }
+                    var choicesArray = textArray[2].split(",");
+                    for (var i = 0; i < choicesArray.length; i++) {
+                        newPoll.choices.push({
+                            index: i + 1,
+                            name: choicesArray[i].trim(),
+                            votes: []
+                        });
+                    };
+                    collection.insertOne(newPoll, (error, result) => {
+                        if (error) {
+                            sendErrorResponse(res);
+                        } else {
+                            sendPublicResponse(res, "Poll Created!\n" + getFormattedPollResults(newPoll, false));
+                        }
 
-        });
+                    });
+                }
+
+            });
     } else {
         sendErrorResponse(res);
     }
@@ -191,26 +203,26 @@ const createNewPoll = (res, requestBody, commandArray) => {
 
 const unvote = (res, requestBody) => {
     collection.findOne({
-        "teamId": requestBody.team_id,
-        "channelId": requestBody.channel_id,
-        "isClosed": false
-    })
-    .then((document) => {
-        if (document) {
-            // remove existing vote
-            document.choices.forEach((choice) => {
-                choice.votes = choice.votes.filter(vote => vote !== requestBody.user_id);
-            });
-            collection.findOneAndReplace({
-                    "_id": document._id
-                }, document)
-                .then((response) => {
-                    sendResponse(res, "vote has been un-recorded");
-                })
-        } else {
-            sendErrorResponse(res);
-        }
-    });   
+            "teamId": requestBody.team_id,
+            "channelId": requestBody.channel_id,
+            "isClosed": false
+        })
+        .then((document) => {
+            if (document) {
+                // remove existing vote
+                document.choices.forEach((choice) => {
+                    choice.votes = choice.votes.filter(vote => vote !== requestBody.user_id);
+                });
+                collection.findOneAndReplace({
+                        "_id": document._id
+                    }, document)
+                    .then((response) => {
+                        sendResponse(res, "vote has been un-recorded");
+                    })
+            } else {
+                sendErrorResponse(res);
+            }
+        });
 }
 
 const vote = (res, requestBody, commandArray) => {
@@ -223,18 +235,23 @@ const vote = (res, requestBody, commandArray) => {
             })
             .then((document) => {
                 if (document) {
-                    // remove existing vote
-                    document.choices.forEach((choice) => {
-                        choice.votes = choice.votes.filter(vote => vote !== requestBody.user_id);
-                    });
-                    // add new vote 
-                    document.choices[selectedVote - 1].votes.push(requestBody.user_id);
-                    collection.findOneAndReplace({
-                            "_id": document._id
-                        }, document)
-                        .then((response) => {
-                            sendResponse(res, "vote has been recorded");
-                        })
+                    if (selectedVote <= 0 || selectedVote > document.choices.length) {
+                        sendResponse(res, 'Learn to read... your choices are between 1 and ' + document.choices.length)
+                    } else {
+                        // remove existing vote
+                        document.choices.forEach((choice) => {
+                            choice.votes = choice.votes.filter(vote => vote !== requestBody.user_id);
+                        });
+                        // add new vote 
+                        document.choices[selectedVote - 1].votes.push(requestBody.user_id);
+                        collection.findOneAndReplace({
+                                "_id": document._id
+                            }, document)
+                            .then((response) => {
+                                sendResponse(res, getFormattedPollResults(document, true, true));
+                            })
+                    }
+
                 } else {
                     sendErrorResponse(res);
                 }
@@ -271,15 +288,17 @@ function replaceAll(str, find, replace) {
     return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
 }
 
-const getFormattedPollResults = (poll, showVotes = true) => {
+const getFormattedPollResults = (poll, showVotes = true, hideVoters = false) => {
     var displayText = `*${poll.title}*\n`;
     poll.choices.forEach((choice) => {
         displayText += `*${choice.index}* ${choice.name}`
         if (showVotes) {
             displayText += ` - ${choice.votes.length}\n`;
-            choice.votes.forEach((vote) => {
-                displayText += `            <@${vote}>\n`;
-            });
+            if (!hideVoters) {
+                choice.votes.forEach((vote) => {
+                    displayText += `            <@${vote}>\n`;
+                });
+            }
         } else {
             displayText += '\n';
         }
