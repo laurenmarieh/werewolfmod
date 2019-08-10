@@ -83,7 +83,7 @@ app.post('/', (req, res) => {
                     case "unvote":
                     case "remove":
                     case "annul":
-                    case "recind":
+                    case "rescind":
                     case "repeal": 
                         unvote(res, requestBody);
                         break;
