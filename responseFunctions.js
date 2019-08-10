@@ -1,7 +1,7 @@
 
-const sendErrorResponse = (res) => {
+const sendErrorResponse = (res, message = null) => {
     res.status(200).send({
-        text: 'Whoops! Something went wrong :shrug:',
+        text: (message) ? message : 'Whoops! Something went wrong :shrug:',
     });
 };
 

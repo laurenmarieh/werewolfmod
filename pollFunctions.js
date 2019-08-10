@@ -23,14 +23,21 @@ const vote = (res, requestBody, commandArray) => {
                     poll.choices.options[selectedVote - 1].votes.push(requestBody.user_id);
                     db.replaceChoices({
                         pollId: poll.id,
-                    }, poll.choices)
+                        choices: poll.choices
+                    })
                         .then((response) => {
                             console.log('response: ', response);
-                            resFunc.sendResponse(res, 'vote has been recorded');
+                            resFunc.sendResponse(res, 'Your vote has been recorded');
+                        }).catch(err => {
+                            console.log(err);
+                            resFuncs.sendErrorResponse(res);
                         });
                 } else {
                     resFunc.sendErrorResponse(res);
                 }
+            }).catch(err => {
+                console.log(err);
+                resFuncs.sendErrorResponse(res);
             });
     } else {
         resFunc.sendErrorResponse(res);
@@ -38,7 +45,7 @@ const vote = (res, requestBody, commandArray) => {
 };
 
 const getFormattedPollResults = (poll, showVotes = true) => {
-    let displayText = `*${poll.title}*\n`;
+    let displayText = `*${poll.pollTitle}*\n`;
     poll.choices.options.forEach((option) => {
         displayText += `*${option.index}* ${option.name}`;
         if (showVotes) {
@@ -59,7 +66,7 @@ const createNewPoll = (res, requestBody, commandArray) => {
     text = replaceAll(text, '”', '"');
     const textArray = text.split('"');
 
-    if (commandArray.length > 2) {
+    if (textArray.length > 2) {
         const newPoll = {
             teamId: requestBody.team_id,
             channelId: requestBody.channel_id,
@@ -67,9 +74,6 @@ const createNewPoll = (res, requestBody, commandArray) => {
             choices: { options: [] },
             isClosed: false,
         };
-        if (textArray.length < 2) {
-            resFunc.sendErrorResponse(res);
-        }
         const choicesArray = textArray[2].split(',');
         for (let i = 0; i < choicesArray.length; i++) {
             newPoll.choices.options.push({
@@ -78,23 +82,41 @@ const createNewPoll = (res, requestBody, commandArray) => {
                 votes: [],
             });
         }
-        console.log("NewPoll: ", newPoll)
-        //HELP ME HERE IDK what CreatPoll Needs to return
-        db.createPoll(newPoll, (error, result) => {
-            if (error) {
+        db.createPoll(newPoll).then((result) => {
+            if (result.rowCount != 1) {
                 resFunc.sendErrorResponse(res);
             } else {
                 resFunc.sendPublicResponse(res, `Poll Created!\n${getFormattedPollResults(newPoll, false)}`);
             }
-            console.log('Result:', result);
+        }).catch(err => {
+            console.log(err);
+            resFuncs.sendErrorResponse(res);
         });
     } else {
-        resFunc.sendErrorResponse(res);
+        resFunc.sendErrorResponse(res, 'Improperly formatted poll Request.\n Use `/werewolf new "Poll title" Option1, Option2, Option3...` instead');
     }
+};
+
+const getPollfromResultRow = (row) => {
+    const { id, poll_title, choices, is_closed, channel_name, channel_id, team_name, team_id, created_date, closed_date } = row;
+    const poll = {
+        id,
+        pollTitle: poll_title,
+        choices,
+        isClosed: is_closed,
+        channelName: channel_name,
+        channelId: channel_id,
+        teamName: team_name,
+        teamId: team_id,
+        createdDate: created_date,
+        closedDate: closed_date
+    }
+    return poll
 };
 
 module.exports = {
     getFormattedPollResults,
     vote,
     createNewPoll,
+    getPollfromResultRow,
 };

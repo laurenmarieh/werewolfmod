@@ -54,29 +54,33 @@ app.post('/', (req, res) => {
                             channelId: requestBody.channel_id,
                             isClosed: false,
                         })
-                            .then((poll) => {
+                            .then((row) => {
+                                const poll = pollFuncs.getPollfromResultRow(row);
                                 const displayText = pollFuncs.getFormattedPollResults(poll);
                                 res.status(200).send({
                                     text: displayText,
                                 });
+                            }).catch(err => {
+                                console.log(err);
+                                resFuncs.sendErrorResponse(res);
                             });
                         break;
                     case 'close':
                         db.closePoll({
                             teamId: requestBody.team_id,
                             channelId: requestBody.channel_id,
-                        }, {
-                                $set: {
-                                    isClosed: true,
-                                },
-                            })
+                        })
                             .then((response) => {
-                                if (response.ok) {
-                                    const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(response.value)}`;
+                                if (response.rowCount == 1) {
+                                    const poll = pollFuncs.getPollfromResultRow(response.rows[0]);
+                                    const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(poll)}`;
                                     resFuncs.sendPublicResponse(res, pollResults);
                                 } else {
                                     res.status(500).send(response);
                                 }
+                            }).catch(err => {
+                                console.log(err);
+                                resFuncs.sendErrorResponse(res);
                             });
                         break;
                     case 'vote':
@@ -128,17 +132,22 @@ app.get('/slackauth', (req, res) => {
                     botAccessToken: body.bot.bot_access_token,
                 },
             };
-            db.insertAuth(newAuth, (error, result) => {
-                if (error) {
-                    res.status(500).send(error);
-                }
-                res.status(200).send(`<!DOCTYPE html>
+            db.insertAuth(newAuth)
+                .then((response) => {
+                    console.log(response);
+                    if (!response.ok) {
+                        res.status(500).send(response);
+                    }
+                    res.status(200).send(`<!DOCTYPE html>
                 <html>
                     <body>
                         <h1>You have added Werewolf to Slack!</h1>
                     </body>
                 </html>`);
-            });
+                }).catch(err => {
+                    console.log(err);
+                    res.status(500).send(err);
+                });
         } else {
             res.status(200).send(`<!DOCTYPE html>
                 <html>
