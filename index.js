@@ -49,7 +49,7 @@ app.post('/', (req, res) => {
                         pollFuncs.createNewPoll(res, requestBody, commandArray);
                         break;
                     case 'results':
-                        collection.findOne({
+                        db.findOne({
                             teamId: requestBody.team_id,
                             channelId: requestBody.channel_id,
                             isClosed: false,
@@ -62,10 +62,9 @@ app.post('/', (req, res) => {
                             });
                         break;
                     case 'close':
-                        collection.findOneAndUpdate({
+                        db.closePoll({
                             teamId: requestBody.team_id,
                             channelId: requestBody.channel_id,
-                            isClosed: false,
                         }, {
                                 $set: {
                                     isClosed: true,
@@ -117,7 +116,7 @@ app.get('/slackauth', (req, res) => {
         }
         const body = JSON.parse(rawBody);
         if (body.ok) {
-            const authCollection = database.collection('auth');
+            // const authCollection = database.collection('auth');
             const newAuth = {
                 accessToken: body.access_token,
                 scope: body.scope,
@@ -129,7 +128,7 @@ app.get('/slackauth', (req, res) => {
                     botAccessToken: body.bot.bot_access_token,
                 },
             };
-            authCollection.insertOne(newAuth, (error, result) => {
+            db.insertAuth(newAuth, (error, result) => {
                 if (error) {
                     res.status(500).send(error);
                 }
