@@ -6,10 +6,10 @@ const bodyParser = require('body-parser');
 const request = require('request');
 const mongoClient = require('mongodb').MongoClient;
 const objectId = require('mongodb').ObjectID;
-const { pollFuncs } = require('./pollFunctions');
-const { resFuncs } = require('./responseFunctions');
-const { utils } = require('./utils');
-const { db } = require('./dbUtils');
+const pollFuncs = require('./pollFunctions');
+const resFuncs = require('./responseFunctions');
+const utils = require('./utils');
+const db = require('./dbUtils');
 // Creates express app
 const app = express();
 // The port used for Express server

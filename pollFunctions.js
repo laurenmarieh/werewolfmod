@@ -1,6 +1,6 @@
-const { resFunc } = require('./responseFunctions');
+const resFunc = require('./responseFunctions');
 const { replaceAll } = require('./utils');
-const { db } = require('./dbUtils');
+const db = require('./dbUtils');
 
 const vote = (res, requestBody, commandArray) => {
     if (commandArray.length > 1) {
@@ -14,13 +14,13 @@ const vote = (res, requestBody, commandArray) => {
                 if (poll) {
                     console.log('POLL RETRIEVED', JSON.stringify(poll));
                     // remove existing vote
-                    poll.choices.forEach((choice) => {
-                        choice.votes = choice.votes.filter( // eslint-disable-line no-param-reassign
+                    poll.choices.options.forEach((option) => {
+                        option.votes = option.votes.filter( // eslint-disable-line no-param-reassign
                             thisVote => thisVote !== requestBody.user_id,
                         );
                     });
                     // add new vote
-                    poll.choices[selectedVote - 1].votes.push(requestBody.user_id);
+                    poll.choices.options[selectedVote - 1].votes.push(requestBody.user_id);
                     db.replaceChoices({
                         pollId: poll.id,
                     }, poll.choices)
@@ -39,11 +39,11 @@ const vote = (res, requestBody, commandArray) => {
 
 const getFormattedPollResults = (poll, showVotes = true) => {
     let displayText = `*${poll.title}*\n`;
-    poll.choices.forEach((choice) => {
-        displayText += `*${choice.index}* ${choice.name}`;
+    poll.choices.options.forEach((option) => {
+        displayText += `*${option.index}* ${option.name}`;
         if (showVotes) {
-            displayText += ` - ${choice.votes.length}\n`;
-            choice.votes.forEach((myVote) => {
+            displayText += ` - ${option.votes.length}\n`;
+            option.votes.forEach((myVote) => {
                 displayText += `            <@${myVote}>\n`;
             });
         } else {
@@ -64,7 +64,7 @@ const createNewPoll = (res, requestBody, commandArray) => {
             teamId: requestBody.team_id,
             channelId: requestBody.channel_id,
             pollTitle: textArray[1],
-            choices: [],
+            choices: { options: [] },
             isClosed: false,
         };
         if (textArray.length < 2) {
@@ -72,12 +72,14 @@ const createNewPoll = (res, requestBody, commandArray) => {
         }
         const choicesArray = textArray[2].split(',');
         for (let i = 0; i < choicesArray.length; i++) {
-            newPoll.choices.push({
+            newPoll.choices.options.push({
                 index: i + 1,
                 name: choicesArray[i].trim(),
                 votes: [],
             });
         }
+        console.log("NewPoll: ", newPoll)
+        //HELP ME HERE IDK what CreatPoll Needs to return
         db.createPoll(newPoll, (error, result) => {
             if (error) {
                 resFunc.sendErrorResponse(res);

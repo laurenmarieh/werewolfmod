@@ -14,10 +14,12 @@ const getPolls = () => {
 const createPoll = (request) => {
     const {
         pollTitle, choices, isClosed, channelName, channelId, teamName, teamId,
-    } = request.body;
+    } = request;
     db.query('INSERT INTO public.polls (poll_title, choices, is_closed, channel_name, channel_id, team_name, team_id)' +
         'VALUES($1, $2, $3, $4, $5, $6, $7)',
-        [pollTitle, choices, isClosed, channelName, channelId, teamName, teamId], (error, results) => {
+        [pollTitle, choices, isClosed, channelName, channelId, teamName, teamId],
+        //HELP ME HERE
+        (error, results) => {
             if (error) {
                 throw error;
             }
@@ -74,19 +76,6 @@ const instertAuth = (req) => {
             }
             return results.rows;
         });
-
-}
-
-const x = {
-    accessToken: body.access_token,
-    scope: body.scope,
-    userId: body.user_id,
-    teamName: body.team_name,
-    teamId: body.team_id,
-    bot: {
-        botUserId: body.bot.bot_user_id,
-        botAccessToken: body.bot.bot_access_token,
-    },
 }
 
 module.exports = {
