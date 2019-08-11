@@ -76,7 +76,7 @@ app.post('/', (req, res) => {
                     case "annul":
                     case "rescind":
                     case "repeal":
-                        unvote(res, requestBody);
+                        pollFuncs.unvote(res, requestBody);
                         break;
                     default:
                         resFuncs.sendErrorResponse(res);
