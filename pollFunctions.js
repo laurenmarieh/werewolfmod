@@ -118,6 +118,7 @@ const createNewPoll = (res, requestBody, commandArray) => {
                         options: []
                     },
                     isClosed: false,
+                    isGame: false
                 };
                 const choicesArray = textArray[2].split(',');
                 for (let i = 0; i < choicesArray.length; i++) {
@@ -154,6 +155,7 @@ const getPollfromResultRow = (row) => {
         poll_title,
         choices,
         is_closed,
+        is_game,
         channel_name,
         channel_id,
         team_name,
@@ -166,6 +168,7 @@ const getPollfromResultRow = (row) => {
         pollTitle: poll_title,
         choices,
         isClosed: is_closed,
+        isGame: is_game,
         channelName: channel_name,
         channelId: channel_id,
         teamName: team_name,
