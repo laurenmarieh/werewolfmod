@@ -19,7 +19,11 @@ app.use(bodyParser.urlencoded({
 app.use(bodyParser.json());
 
 app.post('/', (req, res) => {
-    // console.log(req);
+
+    if (req.warmer) {
+        res.send(`"Warmed": true`);
+    }
+    console.log(req);
     const slashCommand = req.body.command;
     switch (slashCommand) {
         case '/werewolf':
