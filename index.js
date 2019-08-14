@@ -23,7 +23,6 @@ app.post('/', (req, res) => {
     if (req.warmer) {
         res.send(`"Warmed": true`);
     }
-    // console.log(req);
     const slashCommand = req.body.command;
     switch (slashCommand) {
         case '/werewolf':
@@ -87,13 +86,10 @@ app.post('/', (req, res) => {
             break;
         case '/modspeak':
             let modText = req.body.text.trim();
-            console.log(req.body);
             modText = `*\`\`\`${req.body.text.trim()}\`\`\`*`;
             if (modText.includes(`-here`)) {
                 modText = `<!here>\n${modText.replace('-here', '')}`
             }
-            // OLD Way of doining bold
-            /// modText = `*${utils.replaceAll(req.body.text.trim(), '\n', '*\n*')}*`;
             request.post({
                 url: req.body.response_url,
                 json: true,
@@ -167,9 +163,9 @@ app.get('/slackauth', (req, res) => {
 });
 
 // Starts Local server -- COMMENT OUT FOR DEPLOYMENT
-app.listen(process.env.PORT || PORT, () => {
-    console.log(`Bot is listening on port ${PORT}`);
-});
+// app.listen(process.env.PORT || PORT, () => {
+//     console.log(`Bot is listening on port ${PORT}`);
+// });
 
 // Allows for Deployment - COMMENT OUT TO RUN LOCAL
-// module.exports = app;
+module.exports = app;
