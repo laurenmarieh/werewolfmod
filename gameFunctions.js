@@ -41,7 +41,6 @@ const startNewGame = (res, requestBody) => {
 const closeNewGamePoll = (res, responseUrl, poll) => {
     resFunc.sendResponse(res, 'LETS START THIS THING');
     const roles = assignRoles(poll, ['seer', 'doc']);
-    console.log(roles);
     request.post({
         url: responseUrl,
         json: true,
@@ -49,45 +48,46 @@ const closeNewGamePoll = (res, responseUrl, poll) => {
             text: JSON.stringify(roles) || 'You need more than 1 player...'
         }
     }, (error, response, rawBody) => {
-        console.log(rawBody);
         if (error) {
             console.log(error);
         }
     });
     notifyPlayers(roles);
-    request.get({
-        url: 'https://slack.com/api/conversations.list?types=private_channel',
-        json: true,
-        headers: {
-            Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
-        }
-    }, (error, response, body) => {
-        console.log(body);
-        if (error) {
-            console.log(error);
-        } else {
-            const bgChannel = body.channels.find(x => x.name == 'nothing-to-see-here');
-            if (bgChannel) {
-                if (bgChannel.is_archived) {
-                    unarchiveChannel(bgChannel.id).then(() => {
-                        setupBGChannel(roles, bgChannel.id);
-                    });
-                } else {
-                    setupBGChannel(roles, bgChannel.id);
-                }
-            } else {
-                // createChannel().then((newChannelId) => {
-                //     createGroup(roles.filter(x => x.role == 'bg'), newChannelId);
-                // })
-            }
-        }
-    });
+    // request.get({
+    //     url: 'https://slack.com/api/conversations.list?types=private_channel',
+    //     json: true,
+    //     headers: {
+    //         Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
+    //     }
+    // }, (error, response, body) => {
+    //     if (error) {
+    //         console.log(error);
+    //     } else {
+    //         const bgChannel = body.channels.find(x => x.name == 'nothing-to-see-here');
+    //         if (bgChannel) {
+    //             console.log('Found BG Channel');
+    //             if (bgChannel.is_archived) {
+    //                 console.log('BG Channel is archived, unarchiving');
+    //                 unarchiveChannel(bgChannel.id).then(() => {
+    //                     console.log('Successfully unarchived, setting up BG channel');
+    //                     setupBGChannel(roles, bgChannel.id);
+    //                 });
+    //             } else {
+    //                 setupBGChannel(roles, bgChannel.id);
+    //             }
+    //         } else {
+    //             // createChannel().then((newChannelId) => {
+    //             //     createGroup(roles.filter(x => x.role == 'bg'), newChannelId);
+    //             // })
+    //         }
+    //     }
+    // });
 }
 
 const unarchiveChannel = (channelId) => {
-    return new Promise(() => {
+    return new Promise((resolve, reject) => {
         request.post({
-            url: 'https://slack.com/api/channels.unarchive',
+            url: 'https://slack.com/api/conversations.unarchive',
             json: true,
             headers: {
                 Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
@@ -99,15 +99,17 @@ const unarchiveChannel = (channelId) => {
             console.log(rawBody);
             if (error) {
                 console.log(error);
-                return false;
+                reject();
             }
-            return true;
+            resolve();
         });
     });
 }
 
 const setupBGChannel = (players, channelId) => {
+    console.log('Removing players from BG Channel');
     kickGroup(players, channelId).then(() => {
+        console.log('Adding players to bg channel');
         createGroup(players.filter(x => x.role == 'bg'), channelId);
     });
 }
@@ -125,7 +127,6 @@ const notifyPlayers = (players) => {
                 text: getRoleText(player.role)
             }
         }, (error, response, rawBody) => {
-            console.log(rawBody);
             if (error) {
                 console.log(error);
             }
@@ -149,14 +150,39 @@ const kickGroup = (players, channelId) => {
                     user: player.id
                 }
             }, (err, res, body) => {
-                count++;
                 console.log(body);
                 if (err) {
                     console.log(err);
                 }
 
-                if (count >= players.length) {
-                    resolve();
+                if (body.ok) {
+                    count++;
+                    if (count >= players.length) {
+                        resolve();
+                    }
+                } else if (body.error == 'cant_kick_self') {
+                    request.post({
+                        url: 'https://slack.com/api/conversations.leave',
+                        json: true,
+                        headers: {
+                            Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
+                        },
+                        body: {
+                            channel: channelId
+                        }
+                    }, (err, res, body) => {
+                        console.log(body);
+                        if (err) {
+                            console.log(err);
+                        }
+
+                        if (body.ok) {
+                            count++;
+                            if (count >= players.length) {
+                                resolve();
+                            }
+                        }
+                    });
                 }
             });
         });
@@ -166,7 +192,6 @@ const kickGroup = (players, channelId) => {
 
 const createGroup = (players, channelId) => {
     players.forEach(player => {
-        console.log(player);
         request.post({
             url: 'https://slack.com/api/conversations.invite',
             json: true,
