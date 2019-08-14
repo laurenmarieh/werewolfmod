@@ -23,7 +23,6 @@ app.post('/', (req, res) => {
     if (req.warmer) {
         res.send(`"Warmed": true`);
     }
-    console.log(req);
     const slashCommand = req.body.command;
     switch (slashCommand) {
         case '/werewolf':
@@ -86,10 +85,21 @@ app.post('/', (req, res) => {
             }
             break;
         case '/modspeak':
-            const modText = `*${utils.replaceAll(req.body.text.trim(), '\n', '*\n*')}*`;
+            let modText = req.body.text.trim();
+            modText = `*\`\`\`${req.body.text.trim()}\`\`\`*`;
+            if (modText.includes(`-here`)) {
+                modText = `<!here>\n${modText.replace('-here', '')}`
+            }
+            request.post({
+                url: req.body.response_url,
+                json: true,
+                body: {
+                    response_type: 'in_channel',
+                    text: modText
+                }
+            });
             res.status(200).send({
-                response_type: 'in_channel',
-                text: modText,
+                text: "Your message has been posted.",
             });
             break;
         default:
