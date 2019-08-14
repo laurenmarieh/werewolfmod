@@ -45,7 +45,7 @@ const closeNewGamePoll = (res, responseUrl, poll) => {
         url: responseUrl,
         json: true,
         body: {
-            text: JSON.stringify(roles) || 'You need more than 1 player...'
+            text: getFormattedRoles(roles) || 'You need more than 1 player...'
         }
     }, (error, response, rawBody) => {
         if (error) {
@@ -53,6 +53,8 @@ const closeNewGamePoll = (res, responseUrl, poll) => {
         }
     });
     notifyPlayers(roles);
+    // Keeping this around for later
+    //
     // request.get({
     //     url: 'https://slack.com/api/conversations.list?types=private_channel',
     //     json: true,
@@ -82,6 +84,19 @@ const closeNewGamePoll = (res, responseUrl, poll) => {
     //         }
     //     }
     // });
+}
+
+const getFormattedRoles = (players) => {
+    let roleDisplay = 'Player Roles: \n';
+    players.sort((a,b) => a.id - b.id);
+    players.forEach((player) => {
+        roleDisplay += `\t*<@${player.id}>*`;
+        if (player.role) {
+            roleDisplay += `(${player.role})`;
+        }
+        roleDisplay += `\n`;
+    });
+    return roleDisplay;
 }
 
 const unarchiveChannel = (channelId) => {
