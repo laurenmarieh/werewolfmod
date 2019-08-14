@@ -12,10 +12,6 @@ const db = require('./dbUtils');
 const app = express();
 // The port used for Express server
 const PORT = 3000;
-// Starts server
-app.listen(process.env.PORT || PORT, () => {
-    console.log(`Bot is listening on port ${PORT}`);
-});
 
 app.use(bodyParser.urlencoded({
     extended: true,
@@ -23,6 +19,11 @@ app.use(bodyParser.urlencoded({
 app.use(bodyParser.json());
 
 app.post('/', (req, res) => {
+
+    if (req.warmer) {
+        res.send(`"Warmed": true`);
+    }
+    console.log(req);
     const slashCommand = req.body.command;
     switch (slashCommand) {
         case '/werewolf':
@@ -150,3 +151,11 @@ app.get('/slackauth', (req, res) => {
         }
     });
 });
+
+// Starts Local server -- COMMENT OUT FOR DEPLOYMENT
+// app.listen(process.env.PORT || PORT, () => {
+//     console.log(`Bot is listening on port ${PORT}`);
+// });
+
+// Allows for Deployment - COMMENT OUT TO RUN LOCAL
+module.exports = app;

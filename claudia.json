@@ -1,0 +1,10 @@
+{
+  "lambda": {
+    "role": "werewolf-executor",
+    "name": "werewolf",
+    "region": "us-east-1"
+  },
+  "api": {
+    "id": "aekyhhkbyb"
+  }
+}
