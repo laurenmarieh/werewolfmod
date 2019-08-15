@@ -20,9 +20,12 @@ app.use(bodyParser.json());
 
 app.post('/', (req, res) => {
 
-    if (req.warmer) {
-        res.send(`"Warmed": true`);
+    console.log(req.body.warmer);
+    if (req.body.warmer) {
+        resFuncs.sendResponse(res, `Warmed up!`);
+        return;
     }
+
     const slashCommand = req.body.command;
     switch (slashCommand) {
         case '/werewolf':
@@ -106,6 +109,7 @@ app.post('/', (req, res) => {
             resFuncs.sendErrorResponse(res);
             break;
     }
+
 });
 
 app.get('/slackauth', (req, res) => {
