@@ -32,9 +32,6 @@ app.post('/', (req, res) => {
             const commandArray = requestBody.text.split(' ');
             if (commandArray.length) {
                 switch (commandArray[0]) {
-                    case 'test':
-                        gameFuncs.notifyPlayers({});
-                        break;
                     case 'poll':
                         pollFuncs.createNewPoll(res, requestBody, commandArray);
                         break;
