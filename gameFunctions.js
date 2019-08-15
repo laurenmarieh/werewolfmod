@@ -39,8 +39,8 @@ const startNewGame = (res, requestBody) => {
 }
 
 const closeNewGamePoll = (res, responseUrl, poll) => {
-    resFunc.sendResponse(res, 'LETS START THIS THING');
-    const roles = assignRoles(poll, ['seer', 'doc']);
+    res.status(200).send();
+    const roles = assignRoles(poll, ['seer', 'doc', 'mason', 'mason']);
     request.post({
         url: responseUrl,
         json: true,
@@ -90,9 +90,9 @@ const getFormattedRoles = (players) => {
     let roleDisplay = 'Player Roles: \n';
     players.sort((a,b) => a.id - b.id);
     players.forEach((player) => {
-        roleDisplay += `\t*<@${player.id}>*`;
+        roleDisplay += `\t<@${player.id}>`;
         if (player.role) {
-            roleDisplay += `(${player.role})`;
+            roleDisplay += `\t(${player.role.toUpperCase()})`;
         }
         roleDisplay += `\n`;
     });
