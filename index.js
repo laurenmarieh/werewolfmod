@@ -20,7 +20,6 @@ app.use(bodyParser.json());
 
 app.post('/', (req, res) => {
 
-    console.log(req.body.warmer);
     if (req.body.warmer) {
         resFuncs.sendResponse(res, `Warmed up!`);
         return;
