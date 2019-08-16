@@ -4,6 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const request = require('request');
+const gameFuncs = require('./gameFunctions');
 const pollFuncs = require('./pollFunctions');
 const resFuncs = require('./responseFunctions');
 const utils = require('./utils');
@@ -27,13 +28,17 @@ app.post('/', (req, res) => {
 
     const slashCommand = req.body.command;
     switch (slashCommand) {
+        case '/ww':
         case '/werewolf':
             const requestBody = req.body;
             const commandArray = requestBody.text.split(' ');
             if (commandArray.length) {
                 switch (commandArray[0]) {
-                    case 'new':
+                    case 'poll':
                         pollFuncs.createNewPoll(res, requestBody, commandArray);
+                        break;
+                    case 'game': 
+                        gameFuncs.startNewGame(res, requestBody);
                         break;
                     case 'results':
                         db.findOne({
@@ -60,8 +65,12 @@ app.post('/', (req, res) => {
                             .then((response) => {
                                 if (response.rowCount > 0) {
                                     const poll = pollFuncs.getPollfromResultRow(response.rows[0]);
-                                    const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(poll)}`;
-                                    resFuncs.sendPublicResponse(res, pollResults);
+                                    if (poll.isGame) {
+                                        gameFuncs.closeNewGamePoll(res, requestBody.response_url, poll)
+                                    } else {
+                                        const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(poll)}`;
+                                        resFuncs.sendPublicResponse(res, pollResults);
+                                    }
                                 } else {
                                     res.status(500).send(response);
                                 }

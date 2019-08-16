@@ -11,11 +11,11 @@ const getPolls = async () => {
 
 const createPoll = async (request) => {
     const {
-        pollTitle, choices, isClosed, channelName, channelId, teamName, teamId,
+        pollTitle, choices, isClosed, channelName, channelId, teamName, teamId, isGame
     } = request;
-    return db.query('INSERT INTO public.polls (poll_title, choices, is_closed, channel_name, channel_id, team_name, team_id)' +
-        'VALUES($1, $2, $3, $4, $5, $6, $7)',
-        [pollTitle, choices, isClosed, channelName, channelId, teamName, teamId]).then((results) => {
+    return db.query('INSERT INTO public.polls (poll_title, choices, is_closed, channel_name, channel_id, team_name, team_id, is_game)' +
+        'VALUES($1, $2, $3, $4, $5, $6, $7, $8)',
+        [pollTitle, choices, isClosed, channelName, channelId, teamName, teamId, isGame]).then((results) => {
             return results;
         });
 };
