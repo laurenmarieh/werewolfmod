@@ -177,9 +177,9 @@ app.get('/slackauth', (req, res) => {
 });
 
 // Starts Local server -- COMMENT OUT FOR DEPLOYMENT
-app.listen(process.env.PORT || PORT, () => {
-    console.log(`Bot is listening on port ${PORT}`);
-});
+// app.listen(process.env.PORT || PORT, () => {
+//     console.log(`Bot is listening on port ${PORT}`);
+// });
 
 // Allows for Deployment - COMMENT OUT TO RUN LOCAL
-// module.exports = app;
+module.exports = app;
