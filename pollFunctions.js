@@ -5,6 +5,7 @@ const {
 const db = require('./dbUtils');
 
 const vote = (res, requestBody, commandArray) => {
+    console.log(requestBody);
     if (commandArray.length > 1) {
         const selectedVote = parseInt(commandArray[1]);
         db.findOne({
