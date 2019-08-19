@@ -8,10 +8,10 @@ const vote = (res, requestBody, commandArray) => {
     if (commandArray.length > 1) {
         const selectedVote = parseInt(commandArray[1]);
         db.findOne({
-                teamId: requestBody.team_id,
-                channelId: requestBody.channel_id,
-                isClosed: false,
-            })
+            teamId: requestBody.team_id,
+            channelId: requestBody.channel_id,
+            isClosed: false,
+        })
             .then((poll) => {
                 if (poll) {
                     console.log('POLL RETRIEVED', JSON.stringify(poll));
@@ -24,9 +24,9 @@ const vote = (res, requestBody, commandArray) => {
                     // add new vote
                     poll.choices.options[selectedVote - 1].votes.push(requestBody.user_id);
                     db.replaceChoices({
-                            pollId: poll.id,
-                            choices: poll.choices
-                        })
+                        pollId: poll.id,
+                        choices: poll.choices
+                    })
                         .then((response) => {
                             console.log('response: ', response);
                             resFunc.sendResponse(res, 'Your vote has been recorded');
@@ -48,10 +48,10 @@ const vote = (res, requestBody, commandArray) => {
 
 const unvote = (res, requestBody) => {
     db.findOne({
-            "teamId": requestBody.team_id,
-            "channelId": requestBody.channel_id,
-            "isClosed": false
-        })
+        "teamId": requestBody.team_id,
+        "channelId": requestBody.channel_id,
+        "isClosed": false
+    })
         .then((poll) => {
             if (poll) {
                 poll.choices.options.forEach((option) => {
@@ -60,9 +60,9 @@ const unvote = (res, requestBody) => {
                     );
                 });
                 db.replaceChoices({
-                        pollId: poll.id,
-                        choices: poll.choices
-                    })
+                    pollId: poll.id,
+                    choices: poll.choices
+                })
                     .then((response) => {
                         console.log('response: ', response);
                         resFunc.sendResponse(res, 'Your vote has been un-recorded');
@@ -110,9 +110,12 @@ const createNewPoll = (res, requestBody, commandArray) => {
             if (existingPoll) {
                 resFunc.sendResponse(res, 'Only one poll at a time people.');
             } else {
+                console.log('RequestBody: ', requestBody)
                 const newPoll = {
                     teamId: requestBody.team_id,
+                    teamName: requestBody.team_domain,
                     channelId: requestBody.channel_id,
+                    channelName: requestBody.channel_name,
                     pollTitle: textArray[1],
                     choices: {
                         options: []

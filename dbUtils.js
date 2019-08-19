@@ -34,7 +34,6 @@ const closePoll = async (req) => {
     return db.query('UPDATE polls set is_closed = true, closed_date = now() where team_id = $1 and channel_id =$2 and is_closed = false returning * ',
         [teamId, channelId])
         .then((results) => {
-            console.log('DB result: ', results.rows)
             return results;
         });
 };
@@ -59,6 +58,15 @@ const instertAuth = async (req) => {
         });
 }
 
+const getAuth = async (req) => {
+    const { team_id, team_domain } = req;
+    return db.query('SELECT * FROM public.auth where team_id= $1 and team_name=$2 LIMIT 1',
+        [team_id, team_domain]).then((results) => {
+            return results.rows[0];
+        });
+};
+
+
 module.exports = {
     getPolls,
     createPoll,
@@ -66,4 +74,5 @@ module.exports = {
     replaceChoices,
     closePoll,
     instertAuth,
+    getAuth,
 };

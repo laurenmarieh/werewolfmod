@@ -5,21 +5,30 @@ const db = require('./dbUtils');
 const pollFuncs = require('./pollFunctions');
 const request = require('request');
 
+const getAuthToken = (requestBody => {
+    db.getAuth(requestBody).then((result) => {
+        return result.access_token;
+    }).catch(err => {
+        console.log(err);
+        return new Error;
+    });
+})
+
 const startNewGame = (res, requestBody) => {
     const newPoll = {
         isGame: true,
         isClosed: false,
         choices: {
             options: [{
-                    index: 1,
-                    name: 'Im in!',
-                    votes: []
-                },
-                {
-                    index: 2,
-                    name: 'Not this time.',
-                    votes: []
-                }
+                index: 1,
+                name: 'Im in!',
+                votes: []
+            },
+            {
+                index: 2,
+                name: 'Not this time.',
+                votes: []
+            }
             ]
         },
         teamId: requestBody.team_id,
@@ -45,7 +54,7 @@ const closeNewGamePoll = (res, responseUrl, poll) => {
         url: responseUrl,
         json: true,
         body: {
-            text: getFormattedRoles(roles) || 'You need more than 1 player...'
+            text: getFormattedRoles(roles) || 'You need more than 1 player...\nPoll has been closed.'
         }
     }, (error, response, rawBody) => {
         if (error) {
@@ -53,6 +62,7 @@ const closeNewGamePoll = (res, responseUrl, poll) => {
         }
     });
     notifyPlayers(roles);
+
     // Keeping this around for later
     //
     // request.get({
@@ -87,8 +97,12 @@ const closeNewGamePoll = (res, responseUrl, poll) => {
 }
 
 const getFormattedRoles = (players) => {
+    if (!players || players.length < 2) {
+        return false;
+    }
     let roleDisplay = 'Player Roles: \n';
-    players.sort((a,b) => a.id - b.id);
+    console.log(`Players: ${players}`);
+    players.sort((a, b) => a.id - b.id);
     players.forEach((player) => {
         roleDisplay += `\t<@${player.id}>`;
         if (player.role) {
@@ -101,22 +115,29 @@ const getFormattedRoles = (players) => {
 
 const unarchiveChannel = (channelId) => {
     return new Promise((resolve, reject) => {
-        request.post({
-            url: 'https://slack.com/api/conversations.unarchive',
-            json: true,
-            headers: {
-                Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
-            },
-            body: {
-                channel: channelId,
-            }
-        }, (error, response, rawBody) => {
-            console.log(rawBody);
-            if (error) {
-                console.log(error);
-                reject();
-            }
-            resolve();
+        var SLACK_AUTH;
+        db.getAuth(requestBody).then((result) => {
+            SLACK_AUTH = result.access_token;
+            request.post({
+                url: 'https://slack.com/api/conversations.unarchive',
+                json: true,
+                headers: {
+                    Authorization: 'Bearer ' + SLACK_AUTH
+                },
+                body: {
+                    channel: channelId,
+                }
+            }, (error, response, rawBody) => {
+                console.log(rawBody);
+                if (error) {
+                    console.log(error);
+                    reject();
+                }
+                resolve();
+            });
+        }).catch(err => {
+            console.log(err);
+            resFunc.sendErrorResponse(res, 'Authorization Failed');
         });
     });
 }
@@ -130,98 +151,122 @@ const setupBGChannel = (players, channelId) => {
 }
 
 const notifyPlayers = (players) => {
+    if (!players || players.length < 2) {
+        return false;
+    }
     players.forEach((player) => {
-        request.post({
-            url: 'https://slack.com/api/chat.postMessage',
-            json: true,
-            headers: {
-                Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
-            },
-            body: {
-                channel: player.id,
-                text: getRoleText(player.role)
-            }
-        }, (error, response, rawBody) => {
-            if (error) {
-                console.log(error);
-            }
+        var SLACK_AUTH;
+        db.getAuth(requestBody).then((result) => {
+            SLACK_AUTH = result.access_token;
+            request.post({
+                url: 'https://slack.com/api/chat.postMessage',
+                json: true,
+                headers: {
+                    Authorization: 'Bearer ' + SLACK_AUTH
+                },
+                body: {
+                    channel: player.id,
+                    text: getRoleText(player.role)
+                }
+            }, (error, response, rawBody) => {
+                if (error) {
+                    console.log(error);
+                }
+            });
+        }).catch(err => {
+            console.log(err);
+            resFunc.sendErrorResponse(res);
         });
     });
-
 }
 
 const kickGroup = (players, channelId) => {
     let response = new Promise((resolve, reject) => {
         let count = 0;
         players.forEach(player => {
+            var SLACK_AUTH;
+            db.getAuth(requestBody).then((result) => {
+                SLACK_AUTH = result.access_token;
+                request.post({
+                    url: 'https://slack.com/api/conversations.kick',
+                    json: true,
+                    headers: {
+                        Authorization: 'Bearer ' + SLACK_AUTH
+                    },
+                    body: {
+                        channel: channelId,
+                        user: player.id
+                    }
+                }, (err, res, body) => {
+                    console.log(body);
+                    if (err) {
+                        console.log(err);
+                    }
+
+                    if (body.ok) {
+                        count++;
+                        if (count >= players.length) {
+                            resolve();
+                        }
+                    } else if (body.error == 'cant_kick_self') {
+                        request.post({
+                            url: 'https://slack.com/api/conversations.leave',
+                            json: true,
+                            headers: {
+                                Authorization: 'Bearer ' + SLACK_AUTH
+                            },
+                            body: {
+                                channel: channelId
+                            }
+                        }, (err, res, body) => {
+                            console.log(body);
+                            if (err) {
+                                console.log(err);
+                            }
+
+                            if (body.ok) {
+                                count++;
+                                if (count >= players.length) {
+                                    resolve();
+                                }
+                            }
+                        });
+                    }
+                });
+            }).catch(err => {
+                console.log(err);
+                resFunc.sendErrorResponse(res);
+            });
+        });
+    });
+    return response;
+
+}
+
+const createGroup = (players, channelId) => {
+    players.forEach(player => {
+        var SLACK_AUTH;
+        db.getAuth(requestBody).then((result) => {
+            SLACK_AUTH = result.access_token;
             request.post({
-                url: 'https://slack.com/api/conversations.kick',
+                url: 'https://slack.com/api/conversations.invite',
                 json: true,
                 headers: {
-                    Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
+                    Authorization: 'Bearer ' + SLACK_AUTH
                 },
                 body: {
                     channel: channelId,
-                    user: player.id
+                    users: player.id
                 }
             }, (err, res, body) => {
                 console.log(body);
                 if (err) {
                     console.log(err);
                 }
-
-                if (body.ok) {
-                    count++;
-                    if (count >= players.length) {
-                        resolve();
-                    }
-                } else if (body.error == 'cant_kick_self') {
-                    request.post({
-                        url: 'https://slack.com/api/conversations.leave',
-                        json: true,
-                        headers: {
-                            Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
-                        },
-                        body: {
-                            channel: channelId
-                        }
-                    }, (err, res, body) => {
-                        console.log(body);
-                        if (err) {
-                            console.log(err);
-                        }
-
-                        if (body.ok) {
-                            count++;
-                            if (count >= players.length) {
-                                resolve();
-                            }
-                        }
-                    });
-                }
             });
-        });
-    });
-    return response;
-}
-
-const createGroup = (players, channelId) => {
-    players.forEach(player => {
-        request.post({
-            url: 'https://slack.com/api/conversations.invite',
-            json: true,
-            headers: {
-                Authorization: 'Bearer ' + process.env.SLACK_AUTH_TOKEN
-            },
-            body: {
-                channel: channelId,
-                users: player.id
-            }
-        }, (err, res, body) => {
-            console.log(body);
-            if (err) {
-                console.log(err);
-            }
+        }).catch(err => {
+            console.log(err);
+            resFunc.sendErrorResponse(res);
         });
     });
 

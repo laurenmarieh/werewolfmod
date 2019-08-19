@@ -37,7 +37,7 @@ app.post('/', (req, res) => {
                     case 'poll':
                         pollFuncs.createNewPoll(res, requestBody, commandArray);
                         break;
-                    case 'game': 
+                    case 'game':
                         gameFuncs.startNewGame(res, requestBody);
                         break;
                     case 'results':
@@ -60,7 +60,9 @@ app.post('/', (req, res) => {
                     case 'close':
                         db.closePoll({
                             teamId: requestBody.team_id,
+                            teamName: requestBody.team_domain,
                             channelId: requestBody.channel_id,
+                            channelName: requestBody.channel_name
                         })
                             .then((response) => {
                                 if (response.rowCount > 0) {
@@ -175,9 +177,9 @@ app.get('/slackauth', (req, res) => {
 });
 
 // Starts Local server -- COMMENT OUT FOR DEPLOYMENT
-// app.listen(process.env.PORT || PORT, () => {
-//     console.log(`Bot is listening on port ${PORT}`);
-// });
+app.listen(process.env.PORT || PORT, () => {
+    console.log(`Bot is listening on port ${PORT}`);
+});
 
 // Allows for Deployment - COMMENT OUT TO RUN LOCAL
-module.exports = app;
+// module.exports = app;
