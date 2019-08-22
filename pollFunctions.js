@@ -1,8 +1,7 @@
 const resFunc = require('./responseFunctions');
-const {
-    replaceAll
-} = require('./utils');
+const { replaceAll } = require('./utils');
 const db = require('./dbUtils');
+const logger = require('./logFunctions');
 
 const vote = (res, requestBody, commandArray) => {
     console.log(requestBody);
@@ -15,7 +14,7 @@ const vote = (res, requestBody, commandArray) => {
         })
             .then((poll) => {
                 if (poll) {
-                    console.log('POLL RETRIEVED', JSON.stringify(poll));
+                    logger.logInfo('POLL RETRIEVED ' + JSON.stringify(poll));
                     // remove existing vote
                     poll.choices.options.forEach((option) => {
                         option.votes = option.votes.filter( // eslint-disable-line no-param-reassign
@@ -32,14 +31,14 @@ const vote = (res, requestBody, commandArray) => {
                             console.log('response: ', response);
                             resFunc.sendResponse(res, 'Your vote has been recorded');
                         }).catch(err => {
-                            console.log(err);
+                            logger.logError(err);
                             resFunc.sendErrorResponse(res);
                         });
                 } else {
                     resFunc.sendErrorResponse(res);
                 }
             }).catch(err => {
-                console.log(err);
+                logger.logError(err);
                 resFunc.sendErrorResponse(res);
             });
     } else {
@@ -68,7 +67,7 @@ const unvote = (res, requestBody) => {
                         console.log('response: ', response);
                         resFunc.sendResponse(res, 'Your vote has been un-recorded');
                     }).catch(err => {
-                        console.log(err);
+                        logger.logError(err);
                         resFunc.sendErrorResponse(res);
                     });
             } else {
@@ -118,15 +117,13 @@ const createNewPoll = (res, requestBody, commandArray) => {
                     channelId: requestBody.channel_id,
                     channelName: requestBody.channel_name,
                     pollTitle: textArray[1],
-                    choices: {
-                        options: []
-                    },
+                    options: [],
                     isClosed: false,
                     isGame: false
                 };
                 const choicesArray = textArray[2].split(',');
                 for (let i = 0; i < choicesArray.length; i++) {
-                    newPoll.choices.options.push({
+                    newPoll.options.push({
                         index: i + 1,
                         name: choicesArray[i].trim(),
                         votes: [],
@@ -139,13 +136,13 @@ const createNewPoll = (res, requestBody, commandArray) => {
                         resFunc.sendPublicResponse(res, `Poll Created!\n${getFormattedPollResults(newPoll, false)}`);
                     }
                 }).catch(err => {
-                    console.log(err);
+                    logger.logError(err);
                     resFunc.sendErrorResponse(res);
                 });
             }
 
         }).catch(err => {
-            console.log(err);
+            logger.logError(err);
             resFunc.sendErrorResponse(res);
         });
     } else {

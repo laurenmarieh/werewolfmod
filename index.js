@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 
 const express = require('express');
@@ -7,8 +6,10 @@ const request = require('request');
 const gameFuncs = require('./gameFunctions');
 const pollFuncs = require('./pollFunctions');
 const resFuncs = require('./responseFunctions');
+const logger = require('./logFunctions');
 const utils = require('./utils');
 const db = require('./dbUtils');
+
 // Creates express app
 const app = express();
 // The port used for Express server
@@ -20,7 +21,6 @@ app.use(bodyParser.urlencoded({
 app.use(bodyParser.json());
 
 app.post('/', (req, res) => {
-
     if (req.body.warmer) {
         resFuncs.sendResponse(res, `Warmed up!`);
         return;
@@ -34,6 +34,10 @@ app.post('/', (req, res) => {
             const commandArray = requestBody.text.split(' ');
             if (commandArray.length) {
                 switch (commandArray[0]) {
+                    case 'test':
+                        logger.logError('ERROR PEOPLE ERROR');
+                        resFuncs.sendResponse(res, 'DONE');
+                        break;
                     case 'poll':
                         pollFuncs.createNewPoll(res, requestBody, commandArray);
                         break;
@@ -42,10 +46,10 @@ app.post('/', (req, res) => {
                         break;
                     case 'results':
                         db.findOne({
-                            teamId: requestBody.team_id,
-                            channelId: requestBody.channel_id,
-                            isClosed: false,
-                        })
+                                teamId: requestBody.team_id,
+                                channelId: requestBody.channel_id,
+                                isClosed: false,
+                            })
                             .then((row) => {
                                 const poll = pollFuncs.getPollfromResultRow(row);
                                 const displayText = pollFuncs.getFormattedPollResults(poll);
@@ -53,17 +57,17 @@ app.post('/', (req, res) => {
                                     text: displayText,
                                 });
                             }).catch(err => {
-                                console.log(err);
+                                logger.logError(err);
                                 resFuncs.sendErrorResponse(res);
                             });
                         break;
                     case 'close':
                         db.closePoll({
-                            teamId: requestBody.team_id,
-                            teamName: requestBody.team_domain,
-                            channelId: requestBody.channel_id,
-                            channelName: requestBody.channel_name
-                        })
+                                teamId: requestBody.team_id,
+                                teamName: requestBody.team_domain,
+                                channelId: requestBody.channel_id,
+                                channelName: requestBody.channel_name
+                            })
                             .then((response) => {
                                 if (response.rowCount > 0) {
                                     const poll = pollFuncs.getPollfromResultRow(response.rows[0]);
@@ -77,7 +81,7 @@ app.post('/', (req, res) => {
                                     res.status(500).send(response);
                                 }
                             }).catch(err => {
-                                console.log(err);
+                                logger.logError(err);
                                 resFuncs.sendErrorResponse(res);
                             });
                         break;
@@ -133,7 +137,7 @@ app.get('/slackauth', (req, res) => {
         },
     }, (error, response, rawBody) => {
         if (error) {
-            console.log(error);
+            logger.logError(error);
         }
         const body = JSON.parse(rawBody);
         if (body.ok) {
@@ -162,7 +166,7 @@ app.get('/slackauth', (req, res) => {
                     </body>
                 </html>`);
                 }).catch(err => {
-                    console.log(err);
+                    logger.logError(err);
                     res.status(500).send(err);
                 });
         } else {
