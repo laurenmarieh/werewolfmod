@@ -23,11 +23,16 @@ function modSpeak(res, requestBody) {
             response_type: 'in_channel',
             text: modText
         }
+    }, (error, response, rawBody) => {
+        if (error) {
+            console.log(error);
+        }
     });
     res.status(200).send({
         text: "Your message has been posted.",
     });
 }
+
 module.exports = {
     replaceAll,
     modSpeak,

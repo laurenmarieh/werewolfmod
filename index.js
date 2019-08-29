@@ -20,20 +20,6 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(bodyParser.json());
 
-app.post('/test', (req, res) => {
-
-    const slashCommand = req.body.command;
-    switch (slashCommand) {
-        case '/ww':
-        case '/werewolf':
-            const requestBody = req.body;
-            break;
-        case '/modspeak':
-            textFuncs.modSpeak(res, requestBody);
-    }
-    
-})
-
 app.post('/', (req, res) => {
 
     if (req.body.warmer) {
@@ -174,6 +160,23 @@ app.get('/slackauth', (req, res) => {
                 </html>`);
         }
     });
+});
+
+app.post('/test', (req, res) => {
+
+    const slashCommand = req.body.command;
+    switch (slashCommand) {
+        case '/ww':
+        case '/werewolf':
+            const requestBody = req.body;
+            break;
+        case '/modspeak':
+            textFuncs.modSpeak(res, requestBody);
+            break;
+        default:
+            resFuncs.sendErrorResponse(res);
+    }
+    
 });
 
 // Starts Local server -- COMMENT OUT FOR DEPLOYMENT
