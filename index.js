@@ -7,8 +7,9 @@ const request = require('request');
 const gameFuncs = require('./gameFunctions');
 const pollFuncs = require('./pollFunctions');
 const resFuncs = require('./responseFunctions');
-const utils = require('./utils');
+const textFuncs = require('./textFunctions');
 const db = require('./dbUtils');
+
 // Creates express app
 const app = express();
 // The port used for Express server
@@ -18,6 +19,20 @@ app.use(bodyParser.urlencoded({
     extended: true,
 }));
 app.use(bodyParser.json());
+
+app.post('/test', (req, res) => {
+
+    const slashCommand = req.body.command;
+    switch (slashCommand) {
+        case '/ww':
+        case '/werewolf':
+            const requestBody = req.body;
+            break;
+        case '/modspeak':
+            textFuncs.modSpeak(res, requestBody);
+    }
+    
+})
 
 app.post('/', (req, res) => {
 
@@ -98,22 +113,7 @@ app.post('/', (req, res) => {
             }
             break;
         case '/modspeak':
-            let modText = req.body.text.trim();
-            modText = `*\`\`\`${req.body.text.trim()}\`\`\`*`;
-            if (modText.includes(`-here`)) {
-                modText = `<!here>\n${modText.replace('-here', '')}`
-            }
-            request.post({
-                url: req.body.response_url,
-                json: true,
-                body: {
-                    response_type: 'in_channel',
-                    text: modText
-                }
-            });
-            res.status(200).send({
-                text: "Your message has been posted.",
-            });
+            textFuncs.modSpeak(res, requestBody);
             break;
         default:
             resFuncs.sendErrorResponse(res);
