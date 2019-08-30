@@ -1,6 +1,10 @@
 const { db } = require('./dbConnection.js');
-
-db.connect();
+db.connect().then(result => {
+    // console.log(result);
+})
+    .catch(error => {
+        // console.log(error);
+})
 
 const getPolls = async () => {
     db.query('SELECT * FROM polls where is_closed = false ORDER BY id ASC')

@@ -99,7 +99,7 @@ app.post('/', (req, res) => {
             }
             break;
         case '/modspeak':
-            textFuncs.modSpeak(res, requestBody);
+            textFuncs.modSpeak(res, req.body);
             break;
         default:
             resFuncs.sendErrorResponse(res);
@@ -163,15 +163,18 @@ app.get('/slackauth', (req, res) => {
 });
 
 app.post('/test', (req, res) => {
+    console.log(`body: ${JSON.stringify(req.body)}`);
 
     const slashCommand = req.body.command;
+    console.log(`SlashCommand: ${slashCommand}`);
     switch (slashCommand) {
         case '/ww':
         case '/werewolf':
             const requestBody = req.body;
+            console.log(`Request Body: ${requestBody}`)
             break;
         case '/modspeak':
-            textFuncs.modSpeak(res, requestBody);
+            textFuncs.modSpeak(res, req.body);
             break;
         default:
             resFuncs.sendErrorResponse(res);
