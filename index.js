@@ -34,10 +34,6 @@ app.post('/', (req, res) => {
             const commandArray = requestBody.text.split(' ');
             if (commandArray.length) {
                 switch (commandArray[0]) {
-                    case 'test':
-                        logger.logError('ERROR PEOPLE ERROR');
-                        resFuncs.sendResponse(res, 'DONE');
-                        break;
                     case 'poll':
                         pollFuncs.createNewPoll(res, requestBody, commandArray);
                         break;
@@ -45,23 +41,28 @@ app.post('/', (req, res) => {
                         gameFuncs.startNewGame(res, requestBody);
                         break;
                     case 'results':
-                        db.findOne({
+                        db.findOneWithResults({
                                 teamId: requestBody.team_id,
                                 channelId: requestBody.channel_id,
                                 isClosed: false,
                             })
-                            .then((row) => {
-                                const poll = pollFuncs.getPollfromResultRow(row);
-                                const displayText = pollFuncs.getFormattedPollResults(poll);
-                                res.status(200).send({
-                                    text: displayText,
-                                });
+                            .then((rows) => {
+                                if (!rows.length) {
+                                   resFuncs.sendResponse(res, 'There isn\'t a poll open right now.');
+                                } else {
+                                    const poll = pollFuncs.getPollfromResultRows(rows);
+                                    const displayText = pollFuncs.getFormattedPollResults(poll);
+                                    res.status(200).send({
+                                        text: displayText,
+                                    });
+                                }
                             }).catch(err => {
                                 logger.logError(err);
                                 resFuncs.sendErrorResponse(res);
                             });
                         break;
                     case 'close':
+                        resFuncs.sendResponse(res, 'We are working on closing your poll.');
                         db.closePoll({
                                 teamId: requestBody.team_id,
                                 teamName: requestBody.team_domain,
@@ -69,13 +70,13 @@ app.post('/', (req, res) => {
                                 channelName: requestBody.channel_name
                             })
                             .then((response) => {
-                                if (response.rowCount > 0) {
-                                    const poll = pollFuncs.getPollfromResultRow(response.rows[0]);
+                                if (response.length > 0) {
+                                    const poll = pollFuncs.getPollfromResultRows(response);
                                     if (poll.isGame) {
-                                        gameFuncs.closeNewGamePoll(res, requestBody.response_url, poll)
+                                        gameFuncs.closeNewGamePoll(res, requestBody.response_url, poll);
                                     } else {
                                         const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(poll)}`;
-                                        resFuncs.sendPublicResponse(res, pollResults);
+                                        resFuncs.sendDelayedPublicResponse(requestBody.response_url, pollResults);
                                     }
                                 } else {
                                     res.status(500).send(response);

@@ -1,4 +1,6 @@
-const { db } = require('./dbConnection.js');
+const {
+    db
+} = require('./dbConnection.js');
 const logger = require('./logFunctions');
 
 db.connect();
@@ -13,29 +15,39 @@ const getPolls = async () => {
 const createPoll = async (request) => {
     const {
         pollTitle,
-        choices,
         isClosed,
         channelName,
         channelId,
         teamName,
         teamId,
-        isGame
+        isGame,
+        choices
     } = request;
-    return db.query('INSERT INTO public.polls (poll_title, is_closed, channel_name, channel_id, team_name, team_id, is_game)' +
-        'VALUES($1, $2, $3, $4, $5, $6, $7)',
-        [pollTitle, isClosed, channelName, channelId, teamName, teamId, isGame]).then((pollResults) => {
-        //return results;
-        queryValues = '';
-        for (i = 0; i < choices.length; i++) {
-            queryValues += 'VALUES(' + pollResults.id + ',';
-            queryValues += choices.index + ',';
-            queryValues += choices.name + ');';
-        }
-        db.query('INSERT INTO public.poll_options (poll_id, option_index, option_name)' + queryValues)
-            .then(optionResults => {
-                logger.logInfo(optionResults);
-                return pollResults;
-            });
+    return db.query('INSERT INTO public.polls (poll_title, is_closed, channel_name, channel_id, team_name, team_id, is_game, choices)' +
+        'VALUES($1, $2, $3, $4, $5, $6, $7, $8)',
+        [pollTitle, isClosed, channelName, channelId, teamName, teamId, isGame, {}]).then((pollResults) => {
+        return findOne({
+            teamId: teamId,
+            channelId: channelId,
+            isClosed: false
+        }).then(insertedPoll => {
+            queryValues = 'VALUES';
+            for (i = 0; i < choices.length; i++) {
+                queryValues += '(' + insertedPoll.id + ',';
+                queryValues += choices[i].index + ', \'';
+                queryValues += choices[i].name + '\')';
+                if (i < choices.length - 1) {
+                    queryValues += ',';
+                } else {
+                    queryValues += ';';
+                }
+            }
+            return db.query('INSERT INTO public.poll_options (poll_id, option_index, option_name)' + queryValues)
+                .then(optionResults => {
+                    logger.logInfo(JSON.stringify(optionResults));
+                    return pollResults;
+                });
+        });
     });
 };
 
@@ -51,6 +63,25 @@ const findOne = async (req) => {
     });
 };
 
+const findOneWithResults = async (req) => {
+    const {
+        teamId,
+        channelId,
+        isClosed
+    } = req;
+    return db.query('SELECT *, poll_votes.id as poll_vote_id, poll_options.id as poll_options_id FROM polls INNER JOIN poll_options ON polls.id = poll_options.poll_id LEFT JOIN poll_votes ON poll_options.id = poll_votes.option_id where polls.team_id= $1 and polls.channel_id =$2 and polls.is_closed = $3',
+    [teamId, channelId, isClosed]).then((results) => {
+        return results.rows;
+    });
+};
+
+const findOneByIdWithResults = async (id) => {
+    return db.query('SELECT * FROM polls INNER JOIN poll_options ON polls.id = poll_options.poll_id LEFT JOIN poll_votes ON poll_options.id = poll_votes.option_id where polls.id= $1',
+        [id]).then((results) => {
+        return results.rows;
+    });
+};
+
 const closePoll = async (req) => {
     logger.logInfo('Closing Poll: ' + JSON.stringify(req));
     const {
@@ -60,17 +91,17 @@ const closePoll = async (req) => {
     return db.query('UPDATE polls set is_closed = true, closed_date = now() where team_id = $1 and channel_id =$2 and is_closed = false returning * ',
             [teamId, channelId])
         .then((results) => {
-            return results;
+            return findOneByIdWithResults(results.rows[0].id);
         });
 };
 
-const replaceChoices = async (req) => {
+const replaceVote = async (req) => {
     const {
-        pollId,
-        choices
+        voteId,
+        optionId
     } = req;
-    return db.query('UPDATE polls set choices = $1 where id = $2',
-        [choices, pollId]).then((results) => {
+    return db.query('UPDATE poll_votes set option_id = $1 where id = $2',
+        [optionId, voteId]).then((results) => {
         return results;
     });
 };
@@ -113,7 +144,8 @@ module.exports = {
     getPolls,
     createPoll,
     findOne,
-    replaceChoices,
+    findOneWithResults,
+    replaceVote,
     closePoll,
     instertAuth,
     getAuth,

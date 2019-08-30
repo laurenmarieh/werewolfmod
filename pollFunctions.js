@@ -1,5 +1,7 @@
 const resFunc = require('./responseFunctions');
-const { replaceAll } = require('./utils');
+const {
+    replaceAll
+} = require('./utils');
 const db = require('./dbUtils');
 const logger = require('./logFunctions');
 
@@ -7,40 +9,51 @@ const vote = (res, requestBody, commandArray) => {
     console.log(requestBody);
     if (commandArray.length > 1) {
         const selectedVote = parseInt(commandArray[1]);
-        db.findOne({
+        db.findOneWithResults({
             teamId: requestBody.team_id,
             channelId: requestBody.channel_id,
             isClosed: false,
-        })
-            .then((poll) => {
-                if (poll) {
-                    logger.logInfo('POLL RETRIEVED ' + JSON.stringify(poll));
-                    // remove existing vote
-                    poll.choices.options.forEach((option) => {
-                        option.votes = option.votes.filter( // eslint-disable-line no-param-reassign
-                            thisVote => thisVote !== requestBody.user_id,
-                        );
-                    });
-                    // add new vote
-                    poll.choices.options[selectedVote - 1].votes.push(requestBody.user_id);
-                    db.replaceChoices({
-                        pollId: poll.id,
-                        choices: poll.choices
-                    })
-                        .then((response) => {
+        }).then((poll) => {
+            if (poll.length) {
+                logger.logInfo('POLL RETRIEVED ' + JSON.stringify(poll));
+                // add new vote
+                const existingVote = poll.find(vote => vote.voter_id == requestBody.user_id);
+                const selectedOption = poll.find(option => option.option_index == selectedVote);
+                if (!selectedOption) {
+                    resFunc.sendResponse(res, 'Choose an actual option please.');
+                } else {
+                    if (existingVote) {
+                        db.replaceVote({
+                            voteId: existingVote.poll_vote_id,
+                            optionId: selectedOption.poll_options_id
+                        }).then((response) => {
                             console.log('response: ', response);
                             resFunc.sendResponse(res, 'Your vote has been recorded');
                         }).catch(err => {
                             logger.logError(err);
                             resFunc.sendErrorResponse(res);
                         });
-                } else {
-                    resFunc.sendErrorResponse(res);
+                    } else {
+                        db.addVote({
+                            voterId: requestBody.user_id,
+                            optionId: selectedOption.poll_options_id
+                        }).then((response) => {
+                            console.log('response: ', response);
+                            resFunc.sendResponse(res, 'Your vote has been recorded');
+                        }).catch(err => {
+                            logger.logError(err);
+                            resFunc.sendErrorResponse(res);
+                        });
+                    }
+                    poll.choices.options[selectedVote - 1].votes.push(requestBody.user_id);
                 }
-            }).catch(err => {
-                logger.logError(err);
+            } else {
                 resFunc.sendErrorResponse(res);
-            });
+            }
+        }).catch(err => {
+            logger.logError(err);
+            resFunc.sendErrorResponse(res);
+        });
     } else {
         resFunc.sendErrorResponse(res);
     }
@@ -48,10 +61,10 @@ const vote = (res, requestBody, commandArray) => {
 
 const unvote = (res, requestBody) => {
     db.findOne({
-        "teamId": requestBody.team_id,
-        "channelId": requestBody.channel_id,
-        "isClosed": false
-    })
+            "teamId": requestBody.team_id,
+            "channelId": requestBody.channel_id,
+            "isClosed": false
+        })
         .then((poll) => {
             if (poll) {
                 poll.choices.options.forEach((option) => {
@@ -60,9 +73,9 @@ const unvote = (res, requestBody) => {
                     );
                 });
                 db.replaceChoices({
-                    pollId: poll.id,
-                    choices: poll.choices
-                })
+                        pollId: poll.id,
+                        choices: poll.choices
+                    })
                     .then((response) => {
                         console.log('response: ', response);
                         resFunc.sendResponse(res, 'Your vote has been un-recorded');
@@ -78,7 +91,7 @@ const unvote = (res, requestBody) => {
 
 const getFormattedPollResults = (poll, showVotes = true) => {
     let displayText = `*${poll.pollTitle}*\n`;
-    poll.choices.options.forEach((option) => {
+    poll.choices.forEach((option) => {
         displayText += `*${option.index}* ${option.name}`;
         if (showVotes) {
             displayText += ` - ${option.votes.length}\n`;
@@ -117,13 +130,13 @@ const createNewPoll = (res, requestBody, commandArray) => {
                     channelId: requestBody.channel_id,
                     channelName: requestBody.channel_name,
                     pollTitle: textArray[1],
-                    options: [],
+                    choices: [],
                     isClosed: false,
                     isGame: false
                 };
                 const choicesArray = textArray[2].split(',');
                 for (let i = 0; i < choicesArray.length; i++) {
-                    newPoll.options.push({
+                    newPoll.choices.push({
                         index: i + 1,
                         name: choicesArray[i].trim(),
                         votes: [],
@@ -150,11 +163,10 @@ const createNewPoll = (res, requestBody, commandArray) => {
     }
 };
 
-const getPollfromResultRow = (row) => {
+const getPollfromResultRows = (rows) => {
     const {
-        id,
+        poll_id,
         poll_title,
-        choices,
         is_closed,
         is_game,
         channel_name,
@@ -163,11 +175,10 @@ const getPollfromResultRow = (row) => {
         team_id,
         created_date,
         closed_date
-    } = row;
+    } = rows[0];
     const poll = {
-        id,
+        id: poll_id,
         pollTitle: poll_title,
-        choices,
         isClosed: is_closed,
         isGame: is_game,
         channelName: channel_name,
@@ -175,8 +186,25 @@ const getPollfromResultRow = (row) => {
         teamName: team_name,
         teamId: team_id,
         createdDate: created_date,
-        closedDate: closed_date
+        closedDate: closed_date,
+        choices: []
     }
+    rows.forEach(voteRow => {
+        const option_index = poll.choices.findIndex(choice => choice.index == voteRow.option_index);
+        if (option_index && voteRow.voter_id) {
+            poll.choices[option_index].votes.push(voteRow.voter_id)
+        } else {
+            poll.choices.push({
+                index: voteRow.option_index,
+                name: voteRow.option_name,
+                votes: voteRow.voter_id ? [voteRow.voter_id] : []
+            });
+        }
+    });
+    poll.choices.reverse();
+    poll.choices.forEach(choice => {
+        choice.votes.reverse();
+    });
     return poll
 };
 
@@ -185,5 +213,5 @@ module.exports = {
     vote,
     unvote,
     createNewPoll,
-    getPollfromResultRow,
+    getPollfromResultRows,
 };
