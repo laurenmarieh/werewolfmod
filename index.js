@@ -7,8 +7,9 @@ const request = require('request');
 const gameFuncs = require('./gameFunctions');
 const pollFuncs = require('./pollFunctions');
 const resFuncs = require('./responseFunctions');
-const utils = require('./utils');
+const textFuncs = require('./textFunctions');
 const db = require('./dbUtils');
+
 // Creates express app
 const app = express();
 // The port used for Express server
@@ -98,22 +99,7 @@ app.post('/', (req, res) => {
             }
             break;
         case '/modspeak':
-            let modText = req.body.text.trim();
-            modText = `*\`\`\`${req.body.text.trim()}\`\`\`*`;
-            if (modText.includes(`-here`)) {
-                modText = `<!here>\n${modText.replace('-here', '')}`
-            }
-            request.post({
-                url: req.body.response_url,
-                json: true,
-                body: {
-                    response_type: 'in_channel',
-                    text: modText
-                }
-            });
-            res.status(200).send({
-                text: "Your message has been posted.",
-            });
+            textFuncs.modSpeak(res, req.body);
             break;
         default:
             resFuncs.sendErrorResponse(res);
@@ -174,6 +160,26 @@ app.get('/slackauth', (req, res) => {
                 </html>`);
         }
     });
+});
+
+app.post('/test', (req, res) => {
+    console.log(`body: ${JSON.stringify(req.body)}`);
+
+    const slashCommand = req.body.command;
+    console.log(`SlashCommand: ${slashCommand}`);
+    switch (slashCommand) {
+        case '/ww':
+        case '/werewolf':
+            const requestBody = req.body;
+            console.log(`Request Body: ${requestBody}`)
+            break;
+        case '/modspeak':
+            textFuncs.modSpeak(res, req.body);
+            break;
+        default:
+            resFuncs.sendErrorResponse(res);
+    }
+    
 });
 
 // Starts Local server -- COMMENT OUT FOR DEPLOYMENT

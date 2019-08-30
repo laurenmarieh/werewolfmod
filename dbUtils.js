@@ -1,6 +1,10 @@
 const { db } = require('./dbConnection.js');
-
-db.connect();
+db.connect()
+    .catch(error => {
+        // Db Connect Throws errors even when it works, 
+        // It tries to authenticate with computer credentials before trying the .env credentials
+        // console.log(error);
+})
 
 const getPolls = async () => {
     db.query('SELECT * FROM polls where is_closed = false ORDER BY id ASC')
