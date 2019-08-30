@@ -1,8 +1,8 @@
 const { db } = require('./dbConnection.js');
-db.connect().then(result => {
-    // console.log(result);
-})
+db.connect()
     .catch(error => {
+        // Db Connect Throws errors even when it works, 
+        // It tries to authenticate with computer credentials before trying the .env credentials
         // console.log(error);
 })
 
