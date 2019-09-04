@@ -14,6 +14,55 @@ const getAuthToken = (requestBody => {
     });
 })
 
+const createGame = (res, requestBody, newGamePoll) => {
+    const displayText = pollFuncs.getFormattedPollResults(newGamePoll);
+    const gameDetails = {
+        players: poll.choices.options[0].votes,
+        gameName: 'Testing', //We need to figure out how to get this data
+        gameDescription: 'Testing Good', //We need to figure out how to get this data
+        workspace: requestBody.team_domain,
+        teamId: requestBody.team_id,
+        channelName: requestBody.channel_name,
+        channelId: requestBody.channel_id,
+        notifyPJVs: true
+    };
+    db.createGame(gameDetails).then(gameId => {
+        console.log(`GameID:`,gameId);
+        if (gameId > 0) {
+            resFunc.sendResponse(res,`GameCreated with id ${gameId}`);
+            request.post({
+                url: responseUrl,
+                json: true,
+                body: {
+                    text: displayText
+                }
+            }, (error, response, rawBody) => {
+                if (error) {
+                    console.log(error);
+                }
+            });
+        }
+        else
+        {
+            resFunc.sendErrorResponse(res, 'Game failed to create');
+            request.post({
+                url: responseUrl,
+                json: true,
+                body: {
+                    text: getFormattedRoles(roles) || 'You need more than 1 player...\nPoll has been closed.'
+                }
+            }, (error, response, rawBody) => {
+                if (error) {
+                    console.log(error);
+                }
+            });
+        }
+    })
+        .catch(err => {
+            console.log(err);
+    })
+}
+
 const startNewGame = (res, requestBody) => {
     const newPoll = {
         isGame: true,
@@ -328,6 +377,7 @@ const randomNumber = (max) => {
 
 module.exports = {
     startNewGame,
+    createGame,
     closeNewGamePoll,
     notifyPlayers
 };

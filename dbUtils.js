@@ -32,6 +32,14 @@ const findOne = async (req) => {
         });
 };
 
+const findPollByID = async (req) => {
+    const { pollId } = req;
+    return db.query('SELECT * FROM polls where id= $1',
+        [pollId]).then((results) => {
+            return results.rows[0];
+        });
+};
+
 const closePoll = async (req) => {
     console.log('Closing Poll: ', req);
     const { teamId, channelId } = req;
@@ -49,6 +57,31 @@ const replaceChoices = async (req) => {
             return results;
         });
 };
+
+const createGame = async (req) => {
+    const { players, gameName, gameDescription, workspace, teamId, channelName, channelId, notifyPJVs } = req;
+    return db.query('INSERT INTO public.games' +
+        '(game_name, game_description, workspace, team_id, channel_name, channel_id, is_running, notify_pjvs, current_day) ' +
+        'VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+        [gameName, gameDescription, workspace, teamId, channelName, channelId, ,'true', notifyPJVs,'Day 0'])
+        .then((results) => {
+            const gameId = results.rows[0].id;
+
+            return gameId;
+        });
+}
+
+const instertAction = async (req) => {
+    //This is just a straight insert, no look ups are done
+    const { actionTypeid, actingPlayerId, targetedPlayerId, actingFaction, targetedFaction, gameId, pollId, description, gameDay } = req;
+    return db.query('INSERT INTO public.action_history' +
+        '(action_type_id, initiating_player_id, targeted_player_id, initiating_faction_id, targeted_faction_id, game_id, poll_id, description, game_day)' +
+        'VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *',
+        [actionTypeid, actingPlayerId, targetedPlayerId, actingFaction, targetedFaction, gameId, pollId, description, gameDay ])
+        .then((results) => {
+            return results.rows;
+        });
+}
 
 const instertAuth = async (req) => {
     const { accessToken, scope, userId, teamName, teamId, bot } = req;
@@ -74,9 +107,12 @@ const getAuth = async (req) => {
 module.exports = {
     getPolls,
     createPoll,
+    createGame,
     findOne,
+    findPollByID,
     replaceChoices,
     closePoll,
     instertAuth,
+    instertAction,
     getAuth,
 };

@@ -171,10 +171,101 @@ app.post('/test', (req, res) => {
         case '/ww':
         case '/werewolf':
             const requestBody = req.body;
-            console.log(`Request Body: ${requestBody}`)
+            const commandArray = requestBody.text.split(' ');
+            if (commandArray.length) {
+                switch (commandArray[0]) {
+                    case 'poll':
+                        pollFuncs.createNewPoll(res, requestBody, commandArray);
+                        break;
+                    case 'game':
+                        gameFuncs.startNewGame(res, requestBody);
+                        break;
+                    case 'results':
+                        db.findOne({
+                            teamId: requestBody.team_id,
+                            channelId: requestBody.channel_id,
+                            isClosed: false,
+                        })
+                            .then((row) => {
+                                const poll = pollFuncs.getPollfromResultRow(row);
+                                const displayText = pollFuncs.getFormattedPollResults(poll);
+                                res.status(200).send({
+                                    text: displayText,
+                                });
+                            }).catch(err => {
+                                console.log(err);
+                                resFuncs.sendErrorResponse(res);
+                            });
+                        break;
+                    case 'close':
+                        db.closePoll({
+                            teamId: requestBody.team_id,
+                            teamName: requestBody.team_domain,
+                            channelId: requestBody.channel_id,
+                            channelName: requestBody.channel_name
+                        })
+                            .then((response) => {
+                                if (response.rowCount > 0) {
+                                    const poll = pollFuncs.getPollfromResultRow(response.rows[0]);
+                                    if (poll.isGame) {
+                                        gameFuncs.closeNewGamePoll(res, requestBody.response_url, poll)
+                                    } else {
+                                        const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(poll)}`;
+                                        resFuncs.sendPublicResponse(res, pollResults);
+                                    }
+                                } else {
+                                    res.status(500).send(response);
+                                }
+                            }).catch(err => {
+                                console.log(err);
+                                resFuncs.sendErrorResponse(res);
+                            });
+                        break;
+                    case 'vote':
+                        pollFuncs.vote(res, requestBody, commandArray);
+                        break;
+                    case "unvote":
+                    case "remove":
+                    case "annul":
+                    case "rescind":
+                    case "repeal":
+                        pollFuncs.unvote(res, requestBody);
+                        break;
+                    default:
+                        resFuncs.sendErrorResponse(res);
+                        break;
+                }
+            }
             break;
         case '/modspeak':
             textFuncs.modSpeak(res, req.body);
+            break;
+        case '/testGameCreate':
+            if (req.body.pollId) {
+                db.findOne({
+                    pollId: req.body.pollId
+                })
+                    .then((response) => {
+                        if (response.rowCount > 0) {
+                            const poll = pollFuncs.getPollfromResultRow(response.rows[0]);
+                            if (poll.isGame) {
+                                gameFuncs.createGame(res, requestBody, poll)
+                            } else {
+                                const pollResults = `Poll IS of the wrong Type! \n${pollFuncs.getFormattedPollResults(poll)}`;
+                                resFuncs.sendPublicResponse(res, pollResults);
+                            }
+                        } else {
+                            res.status(500).send(response);
+                        }
+                    }).catch(err => {
+                        console.log(err);
+                        resFuncs.sendErrorResponse(res);
+                    });
+            }
+            else {
+                console.log(`Error in body: ${req.body}`);
+                resFuncs.sendErrorResponse(res, 'PollId invalid or missing!');
+            }
             break;
         default:
             resFuncs.sendErrorResponse(res);
