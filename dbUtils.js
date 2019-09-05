@@ -69,9 +69,13 @@ const findOneWithResults = async (req) => {
         channelId,
         isClosed
     } = req;
-    return db.query('SELECT *, poll_votes.id as poll_vote_id, poll_options.id as poll_options_id FROM polls INNER JOIN poll_options ON polls.id = poll_options.poll_id LEFT JOIN poll_votes ON poll_options.id = poll_votes.option_id where polls.team_id= $1 and polls.channel_id =$2 and polls.is_closed = $3',
+    return db.query('SELECT *, poll_votes.id as poll_vote_id, poll_options.id as poll_options_id FROM polls INNER JOIN poll_options ON polls.id = poll_options.poll_id LEFT JOIN poll_votes ON poll_options.id = poll_votes.option_id LEFT JOIN users ON poll_votes.voter_id = users.id where polls.team_id= $1 and polls.channel_id =$2 and polls.is_closed = $3',
     [teamId, channelId, isClosed]).then((results) => {
+        console.log(results);
         return results.rows;
+    })
+    .catch(err => {
+        console.log(err);
     });
 };
 
@@ -95,18 +99,28 @@ const closePoll = async (req) => {
         });
 };
 
-const replaceVote = async (req) => {
+const insertVote = async (req) => {
     const {
-        voteId,
-        optionId
+        optionId,
+        voterId
     } = req;
-    return db.query('UPDATE poll_votes set option_id = $1 where id = $2',
-        [optionId, voteId]).then((results) => {
+    return db.query('INSERT INTO public.poll_votes' +
+            '(option_id, voter_id)' +
+            'VALUES($1, $2)',
+            [optionId, voterId])
+        .then((results) => {
+            return results.rows;
+        });
+}
+
+const deactivateVote = async (req) => {
+    return db.query('UPDATE poll_votes set is_active = $1 where id = $2',
+        [false, req]).then((results) => {
         return results;
     });
 };
 
-const instertAuth = async (req) => {
+const insertAuth = async (req) => {
     const {
         accessToken,
         scope,
@@ -139,14 +153,43 @@ const getAuth = async (req) => {
     });
 };
 
+const getUser = async (req) => {
+    const {
+        playerId,
+        teamId
+    } = req;
+    return db.query('SELECT * FROM public.users where team_id= $1 and player_id=$2 LIMIT 1',
+        [teamId, playerId]).then((results) => {
+        return results.rows[0];
+    });
+};
+
+const insertUser = async (req) => {
+    const {
+        playerId,
+        teamId,
+        gamesPlayed
+    } = req;
+    return db.query('INSERT INTO public.users' +
+            '(player_id, games_played, team_id)' +
+            'VALUES($1, $2, $3)',
+            [playerId, gamesPlayed, teamId])
+        .then((results) => {
+            return results.rows;
+        });
+}
+
 
 module.exports = {
     getPolls,
     createPoll,
     findOne,
     findOneWithResults,
-    replaceVote,
+    deactivateVote,
+    insertVote,
     closePoll,
-    instertAuth,
+    insertAuth,
     getAuth,
+    getUser,
+    insertUser
 };

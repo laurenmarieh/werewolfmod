@@ -5,57 +5,61 @@ const {
 const db = require('./dbUtils');
 const logger = require('./logFunctions');
 
-const vote = (res, requestBody, commandArray) => {
-    console.log(requestBody);
-    if (commandArray.length > 1) {
-        const selectedVote = parseInt(commandArray[1]);
-        db.findOneWithResults({
-            teamId: requestBody.team_id,
-            channelId: requestBody.channel_id,
-            isClosed: false,
-        }).then((poll) => {
+const vote = async (res, requestBody, commandArray) => {
+    try {
+        if (commandArray.length > 1) {
+            const selectedVote = parseInt(commandArray[1]);
+            const poll = await db.findOneWithResults({
+                teamId: requestBody.team_id,
+                channelId: requestBody.channel_id,
+                isClosed: false,
+            });
+            console.log(poll);
             if (poll.length) {
                 logger.logInfo('POLL RETRIEVED ' + JSON.stringify(poll));
-                // add new vote
-                const existingVote = poll.find(vote => vote.voter_id == requestBody.user_id);
+                let user = await db.getUser({
+                    playerId: requestBody.user_id,
+                    teamId: requestBody.team_id
+                });
+                if (!user) {
+                    await db.insertUser({
+                        playerId: requestBody.user_id,
+                        teamId: requestBody.team_id,
+                        gamesPlayed: 1
+                    });
+                    user = await db.getUser({
+                        playerId: requestBody.user_id,
+                        teamId: requestBody.team_id
+                    });
+                }
+                const existingVote = poll.find(vote => vote.voter_id == user.id && vote.is_active);
+                console.log(existingVote);
                 const selectedOption = poll.find(option => option.option_index == selectedVote);
                 if (!selectedOption) {
                     resFunc.sendResponse(res, 'Choose an actual option please.');
                 } else {
                     if (existingVote) {
-                        db.replaceVote({
-                            voteId: existingVote.poll_vote_id,
-                            optionId: selectedOption.poll_options_id
-                        }).then((response) => {
-                            console.log('response: ', response);
-                            resFunc.sendResponse(res, 'Your vote has been recorded');
-                        }).catch(err => {
-                            logger.logError(err);
-                            resFunc.sendErrorResponse(res);
-                        });
-                    } else {
-                        db.addVote({
-                            voterId: requestBody.user_id,
-                            optionId: selectedOption.poll_options_id
-                        }).then((response) => {
-                            console.log('response: ', response);
-                            resFunc.sendResponse(res, 'Your vote has been recorded');
-                        }).catch(err => {
-                            logger.logError(err);
-                            resFunc.sendErrorResponse(res);
-                        });
+                        await db.deactivateVote(existingVote.poll_vote_id);
                     }
-                    poll.choices.options[selectedVote - 1].votes.push(requestBody.user_id);
+                    db.insertVote({
+                        voterId: user.id,
+                        optionId: selectedOption.poll_options_id
+                    }).then((response) => {
+                        console.log('response: ', response);
+                        resFunc.sendResponse(res, 'Your vote has been recorded');
+                    }).catch(err => {
+                        logger.logError(err);
+                        resFunc.sendErrorResponse(res);
+                    });
                 }
             } else {
                 resFunc.sendErrorResponse(res);
             }
-        }).catch(err => {
-            logger.logError(err);
+        } else {
             resFunc.sendErrorResponse(res);
-        });
-    } else {
-        resFunc.sendErrorResponse(res);
+        }
+    } catch (err) {
+        console.log(err);
     }
 };
 
@@ -189,19 +193,21 @@ const getPollfromResultRows = (rows) => {
         closedDate: closed_date,
         choices: []
     }
+    console.log(rows);
     rows.forEach(voteRow => {
-        const option_index = poll.choices.findIndex(choice => choice.index == voteRow.option_index);
-        if (option_index && voteRow.voter_id) {
-            poll.choices[option_index].votes.push(voteRow.voter_id)
-        } else {
+        let option_index = poll.choices.findIndex(choice => choice.index == voteRow.option_index);
+        if (option_index < 0) {
             poll.choices.push({
                 index: voteRow.option_index,
                 name: voteRow.option_name,
-                votes: voteRow.voter_id ? [voteRow.voter_id] : []
+                votes: []
             });
+            option_index = poll.choices.length - 1;
+        }
+        if (voteRow.voter_id && voteRow.is_active) {
+            poll.choices[option_index].votes.push(voteRow.voter_id)
         }
     });
-    poll.choices.reverse();
     poll.choices.forEach(choice => {
         choice.votes.reverse();
     });
