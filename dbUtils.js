@@ -120,6 +120,16 @@ const deactivateVote = async (req) => {
     });
 };
 
+const removeVote = async (req) => {
+    const {
+        pollId,
+        playerId
+    } = req;
+    return db.query('UPDATE poll_votes set is_active = $1 WHERE id = (SELECT poll_votes.id FROM poll_options INNER JOIN poll_votes ON poll_options.id = poll_votes.option_id INNER JOIN users ON users.id = poll_votes.voter_id WHERE poll_options.poll_id = $2 AND users.player_id = $3 AND poll_votes.is_active LIMIT 1)',
+        [false, pollId, playerId]).then((results) => {
+        return results;
+    });
+
 const insertAuth = async (req) => {
     const {
         accessToken,
@@ -191,5 +201,6 @@ module.exports = {
     insertAuth,
     getAuth,
     getUser,
-    insertUser
+    insertUser,
+    removeVote
 };

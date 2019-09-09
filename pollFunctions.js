@@ -33,7 +33,6 @@ const vote = async (res, requestBody, commandArray) => {
                     });
                 }
                 const existingVote = poll.find(vote => vote.voter_id == user.id && vote.is_active);
-                console.log(existingVote);
                 const selectedOption = poll.find(option => option.option_index == selectedVote);
                 if (!selectedOption) {
                     resFunc.sendResponse(res, 'Choose an actual option please.');
@@ -63,34 +62,32 @@ const vote = async (res, requestBody, commandArray) => {
     }
 };
 
-const unvote = (res, requestBody) => {
-    db.findOne({
+const unvote = async (res, requestBody) => {
+    try {
+        const poll = await db.findOne({
             "teamId": requestBody.team_id,
             "channelId": requestBody.channel_id,
             "isClosed": false
-        })
-        .then((poll) => {
-            if (poll) {
-                poll.choices.options.forEach((option) => {
-                    option.votes = option.votes.filter( // eslint-disable-line no-param-reassign
-                        thisVote => thisVote !== requestBody.user_id,
-                    );
-                });
-                db.replaceChoices({
-                        pollId: poll.id,
-                        choices: poll.choices
-                    })
-                    .then((response) => {
-                        console.log('response: ', response);
-                        resFunc.sendResponse(res, 'Your vote has been un-recorded');
-                    }).catch(err => {
-                        logger.logError(err);
-                        resFunc.sendErrorResponse(res);
-                    });
-            } else {
-                resFunc.sendErrorResponse(res);
-            }
         });
+        if (poll) {
+            db.removeVote({
+                    pollId: poll.id,
+                    playerId: requestBody.user_id
+                })
+                .then((response) => {
+                    console.log('response: ', response);
+                    resFunc.sendResponse(res, 'Your vote has been un-recorded');
+                }).catch(err => {
+                    logger.logError(err);
+                    resFunc.sendErrorResponse(res);
+                });
+        } else {
+            resFunc.sendErrorResponse(res);
+        }
+    } catch (err) {
+        console.log(err);
+    }
+
 }
 
 const getFormattedPollResults = (poll, showVotes = true) => {
