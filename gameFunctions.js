@@ -4,12 +4,13 @@ const resFunc = require('./responseFunctions');
 const db = require('./dbUtils');
 const pollFuncs = require('./pollFunctions');
 const request = require('request');
+const logger = require('./logFunctions');
 
 const getAuthToken = (requestBody => {
     db.getAuth(requestBody).then((result) => {
         return result.access_token;
     }).catch(err => {
-        console.log(err);
+        logger.logError(err);
         return new Error;
     });
 })
@@ -42,7 +43,7 @@ const startNewGame = (res, requestBody) => {
             resFunc.sendPublicResponse(res, `Poll Created!\n${pollFuncs.getFormattedPollResults(newPoll, false)}`);
         }
     }).catch(err => {
-        console.log(err);
+        logger.logError(err);
         resFunc.sendErrorResponse(res);
     });
 }
@@ -101,7 +102,7 @@ const getFormattedRoles = (players) => {
         return false;
     }
     let roleDisplay = 'Player Roles: \n';
-    console.log(`Players: ${players}`);
+    logger.logInfo(`Players: ${players}`);
     players.sort((a, b) => a.id - b.id);
     players.forEach((player) => {
         roleDisplay += `\t<@${player.id}>`;
@@ -130,22 +131,22 @@ const unarchiveChannel = (channelId) => {
             }, (error, response, rawBody) => {
                 console.log(rawBody);
                 if (error) {
-                    console.log(error);
+                    logger.logError(error);
                     reject();
                 }
                 resolve();
             });
         }).catch(err => {
-            console.log(err);
+            logger.logError(err);
             resFunc.sendErrorResponse(res, 'Authorization Failed');
         });
     });
 }
 
 const setupBGChannel = (players, channelId) => {
-    console.log('Removing players from BG Channel');
+    logger.logInfo('Removing players from BG Channel');
     kickGroup(players, channelId).then(() => {
-        console.log('Adding players to bg channel');
+        logger.logInfo('Adding players to bg channel');
         createGroup(players.filter(x => x.role == 'bg'), channelId);
     });
 }
@@ -170,11 +171,11 @@ const notifyPlayers = (players) => {
                 }
             }, (error, response, rawBody) => {
                 if (error) {
-                    console.log(error);
+                    logger.logError(error);
                 }
             });
         }).catch(err => {
-            console.log(err);
+            logger.logError(err);
             resFunc.sendErrorResponse(res);
         });
     });
@@ -200,7 +201,7 @@ const kickGroup = (players, channelId) => {
                 }, (err, res, body) => {
                     console.log(body);
                     if (err) {
-                        console.log(err);
+                        logger.logError(err);
                     }
 
                     if (body.ok) {
@@ -221,7 +222,7 @@ const kickGroup = (players, channelId) => {
                         }, (err, res, body) => {
                             console.log(body);
                             if (err) {
-                                console.log(err);
+                                logger.logError(err);
                             }
 
                             if (body.ok) {
@@ -234,7 +235,7 @@ const kickGroup = (players, channelId) => {
                     }
                 });
             }).catch(err => {
-                console.log(err);
+                logger.logError(err);
                 resFunc.sendErrorResponse(res);
             });
         });
@@ -261,11 +262,11 @@ const createGroup = (players, channelId) => {
             }, (err, res, body) => {
                 console.log(body);
                 if (err) {
-                    console.log(err);
+                    logger.logError(err);
                 }
             });
         }).catch(err => {
-            console.log(err);
+            logger.logError(err);
             resFunc.sendErrorResponse(res);
         });
     });
