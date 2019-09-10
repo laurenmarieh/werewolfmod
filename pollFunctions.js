@@ -1,7 +1,5 @@
 const resFunc = require('./responseFunctions');
-const {
-    replaceAll
-} = require('./utils');
+const { replaceAll } = require('./textFunctions');
 const db = require('./dbUtils');
 const logger = require('./logFunctions');
 
