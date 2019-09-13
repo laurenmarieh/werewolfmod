@@ -1,56 +1,74 @@
 const resFunc = require('./responseFunctions');
-const { replaceAll } = require('./textFunctions');
-const db = require('./dbUtils');
+const {
+    replaceAll
+} = require('./textFunctions');
+const polls = require('./source/data/polls');
+const votes = require('./source/data/votes');
+const users = require('./source/data/users');
 const logger = require('./logFunctions');
 
 const vote = async (res, requestBody, commandArray) => {
     try {
         if (commandArray.length > 1) {
             const selectedVote = parseInt(commandArray[1]);
-            const poll = await db.findOneWithResults({
-                teamId: requestBody.team_id,
-                channelId: requestBody.channel_id,
-                isClosed: false,
-            });
-            console.log(poll);
-            if (poll.length) {
-                logger.logInfo('POLL RETRIEVED ' + JSON.stringify(poll));
-                let user = await db.getUser({
-                    playerId: requestBody.user_id,
-                    teamId: requestBody.team_id
+            if (selectedVote) {
+                const poll = await polls.getByChannelWithResults({
+                    teamId: requestBody.team_id,
+                    channelId: requestBody.channel_id,
+                    isClosed: false,
                 });
-                if (!user) {
-                    await db.insertUser({
-                        playerId: requestBody.user_id,
-                        teamId: requestBody.team_id,
-                        gamesPlayed: 1
-                    });
-                    user = await db.getUser({
+                if (poll.length) {
+                    logger.logInfo('POLL RETRIEVED ' + JSON.stringify(poll));
+                    let user = await users.getUser({
                         playerId: requestBody.user_id,
                         teamId: requestBody.team_id
                     });
-                }
-                const existingVote = poll.find(vote => vote.voter_id == user.id && vote.is_active);
-                const selectedOption = poll.find(option => option.option_index == selectedVote);
-                if (!selectedOption) {
-                    resFunc.sendResponse(res, 'Choose an actual option please.');
-                } else {
-                    if (existingVote) {
-                        await db.deactivateVote(existingVote.poll_vote_id);
+                    if (!user) {
+                        await users.insertUser({
+                            playerId: requestBody.user_id,
+                            teamId: requestBody.team_id,
+                            gamesPlayed: 1
+                        });
+                        user = await users.getUser({
+                            playerId: requestBody.user_id,
+                            teamId: requestBody.team_id
+                        });
                     }
-                    db.insertVote({
-                        voterId: user.id,
-                        optionId: selectedOption.poll_options_id
-                    }).then((response) => {
-                        console.log('response: ', response);
-                        resFunc.sendResponse(res, 'Your vote has been recorded');
-                    }).catch(err => {
-                        logger.logError(err);
-                        resFunc.sendErrorResponse(res);
-                    });
+                    const existingVote = poll.find(vote => vote.voter_id == user.id && vote.is_active);
+                    const selectedOption = poll.find(option => option.option_index == selectedVote);
+                    if (!selectedOption) {
+                        resFunc.sendResponse(res, 'Choose an actual option please.');
+                    } else {
+                        if (existingVote) {
+                            await votes.deactivateVote(existingVote.poll_vote_id);
+                        }
+                        votes.insertVote({
+                            voterId: user.id,
+                            optionId: selectedOption.poll_options_id
+                        }).then((response) => {
+                            console.log('response: ', response);
+                            resFunc.sendResponse(res, 'Your vote has been recorded');
+                        }).catch(err => {
+                            logger.logError(err);
+                            resFunc.sendErrorResponse(res);
+                        });
+                    }
+                } else {
+                    resFunc.sendErrorResponse(res);
                 }
             } else {
-                resFunc.sendErrorResponse(res);
+                const laurens = ['lrn', 'lurne', 'laurne', 'lauren', 'larne'];
+                const others = ['sell', 'chris', 'dan', 'satan', 'dodd', 'cale', 'cael', 'cake'];
+                const stringVote = commandArray[1];
+                if (laurens.includes(stringVote.toLowerCase())) {
+                    res.status(200).send();
+                    resFunc.sendDelayedPublicResponse(requestBody.response_url, 'Bad idea. Lauren is awesome, you should not vote for her :lauren-hair:');
+                } else if (others.includes(stringVote.toLowerCase())) {
+                    res.status(200).send();
+                    resFunc.sendDelayedPublicResponse(requestBody.response_url, `Yeah, for sure vote for ${stringVote}. In fact, I suggest it.`);
+                } else {
+                    resFunc.sendResponse(res, 'Choose an actual option please.');
+                }
             }
         } else {
             resFunc.sendErrorResponse(res);
@@ -62,13 +80,13 @@ const vote = async (res, requestBody, commandArray) => {
 
 const unvote = async (res, requestBody) => {
     try {
-        const poll = await db.findOne({
+        const poll = await polls.getByChannel({
             "teamId": requestBody.team_id,
             "channelId": requestBody.channel_id,
             "isClosed": false
         });
         if (poll) {
-            db.removeVote({
+            votes.removeVote({
                     pollId: poll.id,
                     playerId: requestBody.user_id
                 })
@@ -90,13 +108,15 @@ const unvote = async (res, requestBody) => {
 
 const getFormattedPollResults = (poll, showVotes = true) => {
     let displayText = `*${poll.pollTitle}*\n`;
+    poll.choices.sort((a, b) => a.index - b.index);
     poll.choices.forEach((option) => {
         displayText += `*${option.index}* ${option.name}`;
         if (showVotes) {
             displayText += ` - ${option.votes.length}\n`;
+            option.votes.sort((a, b) => a.voteTime - b.voteTime);
             option.votes.forEach((myVote) => {
                 console.log(myVote);
-                displayText += `            <@${myVote}>\n`;
+                displayText += `            <@${myVote.playerId}>\n`;
             });
         } else {
             displayText += '\n';
@@ -114,7 +134,7 @@ const createNewPoll = async (res, requestBody, commandArray) => {
     const textArray = text.split('"');
 
     if (textArray.length > 2) {
-        const existingPoll = await db.findOne({
+        const existingPoll = await polls.getByChannel({
             teamId: requestBody.team_id,
             channelId: requestBody.channel_id,
             isClosed: false,
@@ -141,7 +161,7 @@ const createNewPoll = async (res, requestBody, commandArray) => {
                     votes: [],
                 });
             }
-            const result = await db.createPoll(newPoll);
+            const result = await polls.createPoll(newPoll);
             if (result.rowCount != 1) {
                 resFunc.sendDelayedErrorResponse(requestBody.response_url);
             } else {
@@ -191,7 +211,10 @@ const getPollfromResultRows = (rows) => {
             option_index = poll.choices.length - 1;
         }
         if (voteRow.player_id && voteRow.is_active) {
-            poll.choices[option_index].votes.push(voteRow.player_id)
+            poll.choices[option_index].votes.push({
+                playerId: voteRow.player_id,
+                voteTime: voteRow.vote_time
+            });
         }
     });
     poll.choices.forEach(choice => {

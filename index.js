@@ -8,7 +8,8 @@ const pollFuncs = require('./pollFunctions');
 const resFuncs = require('./responseFunctions');
 const textFuncs = require('./textFunctions');
 const logger = require('./logFunctions');
-const db = require('./dbUtils');
+const auth = require('./source/data/auth');
+const polls = require('./source/data/polls');
 
 // Creates express app
 const app = express();
@@ -41,7 +42,7 @@ app.post('/', async (req, res) => {
                         gameFuncs.startNewGame(res, requestBody);
                         break;
                     case 'results':
-                        const rows = await db.findOneWithResults({
+                        const rows = await polls.getByChannelWithResults({
                             teamId: requestBody.team_id,
                             channelId: requestBody.channel_id,
                             isClosed: false,
@@ -58,13 +59,13 @@ app.post('/', async (req, res) => {
                         break;
                     case 'close':
                         resFuncs.sendResponse(res, 'We are working on closing your poll.');
-                        const pollId = await db.closePoll({
+                        const pollId = await polls.closePoll({
                             teamId: requestBody.team_id,
                             teamName: requestBody.team_domain,
                             channelId: requestBody.channel_id,
                             channelName: requestBody.channel_name
                         });
-                        const response = await db.findOneByIdWithResults(pollId);
+                        const response = await polls.getByIdWithResults(pollId);
                         if (response.length > 0) {
                             const poll = pollFuncs.getPollfromResultRows(response);
                             if (poll.isGame) {
@@ -103,7 +104,7 @@ app.post('/', async (req, res) => {
 
 });
 
-app.get('/slackauth', (req, res) => {
+app.get('/slackauth', async (req, res) => {
     console.log(req.query);
     request.post('https://slack.com/api/oauth.access', {
         form: {
@@ -112,7 +113,7 @@ app.get('/slackauth', (req, res) => {
             code: req.query.code,
             redirect_uri: 'https://09fa5881.ngrok.io/slackauth',
         },
-    }, (error, response, rawBody) => {
+    }, async (error, response, rawBody) => {
         if (error) {
             logger.logError(error);
         }
@@ -130,22 +131,22 @@ app.get('/slackauth', (req, res) => {
                     botAccessToken: body.bot.bot_access_token,
                 },
             };
-            db.insertAuth(newAuth)
-                .then((response) => {
-                    console.log(response);
-                    if (!response.ok) {
-                        res.status(500).send(response);
-                    }
-                    res.status(200).send(`<!DOCTYPE html>
+            try {
+                const response = await auth.createAuth(newAuth)
+                console.log(response);
+                if (!response.ok) {
+                    res.status(500).send(response);
+                }
+                res.status(200).send(`<!DOCTYPE html>
                 <html>
                     <body>
                         <h1>You have added Werewolf to Slack!</h1>
                     </body>
                 </html>`);
-                }).catch(err => {
-                    logger.logError(err);
-                    res.status(500).send(err);
-                });
+            } catch (err) {
+                logger.logError(err);
+                res.status(500).send(err);
+            }
         } else {
             res.status(200).send(`<!DOCTYPE html>
                 <html>
@@ -174,7 +175,7 @@ app.post('/test', (req, res) => {
         default:
             resFuncs.sendErrorResponse(res);
     }
-    
+
 });
 
 // Starts Local server -- COMMENT OUT FOR DEPLOYMENT
