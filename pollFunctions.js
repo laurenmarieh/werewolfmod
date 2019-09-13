@@ -58,7 +58,7 @@ const vote = async (res, requestBody, commandArray) => {
                 }
             } else {
                 const laurens = ['lrn', 'lurne', 'laurne', 'lauren', 'larne'];
-                const others = ['sell', 'chris', 'dan', 'satan', 'dodd', 'cale', 'cael', 'cake'];
+                const others = ['sell', 'chris', 'dan', 'satan', 'dodd', 'cale', 'cael', 'cake', 'zach', 'zatch'];
                 const stringVote = commandArray[1];
                 if (laurens.includes(stringVote.toLowerCase())) {
                     res.status(200).send();
