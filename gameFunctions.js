@@ -1,19 +1,21 @@
 require('dotenv').config();
 
 const resFunc = require('./responseFunctions');
-const db = require('./dbUtils');
 const pollFuncs = require('./pollFunctions');
 const request = require('request');
 const logger = require('./logFunctions');
+const auth = require('./source/data/auth');
+const polls = require('./source/data/polls');
 
-const getAuthToken = (requestBody => {
-    db.getAuth(requestBody).then((result) => {
+const getAuthToken = async (requestBody) => {
+    try {
+        const result = await auth.getAuth(requestBody);
         return result.access_token;
-    }).catch(err => {
+    } catch (err) {
         logger.logError(err);
         return new Error;
-    });
-})
+    }
+};
 
 const startNewGame = (res, requestBody) => {
     const newPoll = {
@@ -21,22 +23,22 @@ const startNewGame = (res, requestBody) => {
         isClosed: false,
         choices: {
             options: [{
-                index: 1,
-                name: 'Im in!',
-                votes: []
-            },
-            {
-                index: 2,
-                name: 'Not this time.',
-                votes: []
-            }
+                    index: 1,
+                    name: 'Im in!',
+                    votes: []
+                },
+                {
+                    index: 2,
+                    name: 'Not this time.',
+                    votes: []
+                }
             ]
         },
         teamId: requestBody.team_id,
         channelId: requestBody.channel_id,
         pollTitle: "New Game Anyone?"
     };
-    db.createPoll(newPoll).then((result) => {
+    polls.createPoll(newPoll).then((result) => {
         if (result.rowCount != 1) {
             resFunc.sendErrorResponse(res);
         } else {
@@ -117,7 +119,7 @@ const getFormattedRoles = (players) => {
 const unarchiveChannel = (channelId) => {
     return new Promise((resolve, reject) => {
         var SLACK_AUTH;
-        db.getAuth(requestBody).then((result) => {
+        auth.getAuth(requestBody).then((result) => {
             SLACK_AUTH = result.access_token;
             request.post({
                 url: 'https://slack.com/api/conversations.unarchive',
@@ -157,7 +159,7 @@ const notifyPlayers = (players) => {
     }
     players.forEach((player) => {
         var SLACK_AUTH;
-        db.getAuth(requestBody).then((result) => {
+        auth.getAuth(requestBody).then((result) => {
             SLACK_AUTH = result.access_token;
             request.post({
                 url: 'https://slack.com/api/chat.postMessage',
@@ -186,7 +188,7 @@ const kickGroup = (players, channelId) => {
         let count = 0;
         players.forEach(player => {
             var SLACK_AUTH;
-            db.getAuth(requestBody).then((result) => {
+            auth.getAuth(requestBody).then((result) => {
                 SLACK_AUTH = result.access_token;
                 request.post({
                     url: 'https://slack.com/api/conversations.kick',
@@ -247,7 +249,7 @@ const kickGroup = (players, channelId) => {
 const createGroup = (players, channelId) => {
     players.forEach(player => {
         var SLACK_AUTH;
-        db.getAuth(requestBody).then((result) => {
+        auth.getAuth(requestBody).then((result) => {
             SLACK_AUTH = result.access_token;
             request.post({
                 url: 'https://slack.com/api/conversations.invite',
