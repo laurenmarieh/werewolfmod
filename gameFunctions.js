@@ -21,21 +21,21 @@ const startNewGame = (res, requestBody) => {
     const newPoll = {
         isGame: true,
         isClosed: false,
-        choices: {
-            options: [{
-                    index: 1,
-                    name: 'Im in!',
-                    votes: []
-                },
-                {
-                    index: 2,
-                    name: 'Not this time.',
-                    votes: []
-                }
-            ]
-        },
         teamId: requestBody.team_id,
+        teamName: requestBody.team_domain,
         channelId: requestBody.channel_id,
+        channelName: requestBody.channel_name,
+        choices: [{
+                index: 1,
+                name: 'Im in!',
+                votes: []
+            },
+            {
+                index: 2,
+                name: 'Not this time.',
+                votes: []
+            }
+        ],
         pollTitle: "New Game Anyone?"
     };
     polls.createPoll(newPoll).then((result) => {
@@ -52,6 +52,10 @@ const startNewGame = (res, requestBody) => {
 
 const closeNewGamePoll = (res, responseUrl, poll) => {
     res.status(200).send();
+
+    // Create game in db
+    // Add players to db
+    // notify mod that the game is ready to begin
     const roles = assignRoles(poll, ['seer', 'doc', 'mason', 'mason']);
     request.post({
         url: responseUrl,
