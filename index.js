@@ -44,6 +44,7 @@ app.post('/', async (req, res) => {
             gameFuncs.startNewGame(res, requestBody)
             break
           case 'results':
+          case 'r':
             const rows = await polls.getByChannelWithResults({
               teamId: requestBody.team_id,
               channelId: requestBody.channel_id,
