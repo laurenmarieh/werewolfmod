@@ -28,7 +28,10 @@ const getByChannelWithResults = async req => {
     const { teamId, channelId, isClosed } = req;
     return db
         .query(
-            'SELECT *, poll_votes.id as poll_vote_id, poll_options.id as poll_options_id FROM polls INNER JOIN poll_options ON polls.id = poll_options.poll_id LEFT JOIN poll_votes ON poll_options.id = poll_votes.option_id LEFT JOIN users ON poll_votes.voter_id = users.id where polls.team_id= $1 and polls.channel_id =$2 and polls.is_closed = $3',
+            'SELECT *, poll_votes.id as poll_vote_id, poll_options.id as poll_options_id FROM polls ' +
+                'INNER JOIN poll_options ON polls.id = poll_options.poll_id ' +
+                'LEFT JOIN poll_votes ON poll_options.id = poll_votes.option_id ' +
+                'LEFT JOIN users ON poll_votes.voter_id = users.id where polls.team_id= $1 and polls.channel_id =$2 and polls.is_closed = $3',
             [teamId, channelId, isClosed]
         )
         .then(results => {
@@ -39,7 +42,10 @@ const getByChannelWithResults = async req => {
 const getByIdWithResults = async id => {
     return db
         .query(
-            'SELECT *, poll_votes.id as poll_vote_id, poll_options.id as poll_options_id FROM polls INNER JOIN poll_options ON polls.id = poll_options.poll_id LEFT JOIN poll_votes ON poll_options.id = poll_votes.option_id LEFT JOIN users ON poll_votes.voter_id = users.id where polls.id= $1',
+            'SELECT *, poll_votes.id as poll_vote_id, poll_options.id as poll_options_id FROM polls ' +
+                'INNER JOIN poll_options ON polls.id = poll_options.poll_id ' +
+                'LEFT JOIN poll_votes ON poll_options.id = poll_votes.option_id ' +
+                'LEFT JOIN users ON poll_votes.voter_id = users.id where polls.id= $1',
             [id]
         )
         .then(results => {
