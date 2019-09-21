@@ -43,8 +43,8 @@ app.post('/', async (req, res) => {
                     case 'game':
                         gameFuncs.startNewGame(res, requestBody);
                         break;
-                    case 'results':
                     case 'r':
+                    case 'results':
                         const rows = await polls.getByChannelWithResults({
                             teamId: requestBody.team_id,
                             channelId: requestBody.channel_id,
