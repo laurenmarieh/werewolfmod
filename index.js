@@ -32,6 +32,7 @@ app.post('/', async (req, res) => {
     const slashCommand = req.body.command;
     switch (slashCommand) {
         case '/ww':
+        case '/we':
         case '/werewolf':
             const requestBody = req.body;
             const commandArray = requestBody.text.split(' ');
@@ -176,6 +177,7 @@ app.post('/test', (req, res) => {
     console.log(`SlashCommand: ${slashCommand}`);
     switch (slashCommand) {
         case '/ww':
+        case '/we':
         case '/werewolf':
             const requestBody = req.body;
             console.log(`Request Body: ${requestBody}`);
