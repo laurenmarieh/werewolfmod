@@ -6,6 +6,8 @@ const request = require('request');
 const logger = require('./logFunctions');
 const auth = require('./source/data/auth');
 const polls = require('./source/data/polls');
+const games = require('./source/data/games');
+const players = require('./source/data/players');
 
 const getAuthToken = async (requestBody) => {
     try {
@@ -17,58 +19,96 @@ const getAuthToken = async (requestBody) => {
     }
 };
 
-const startNewGame = (res, requestBody) => {
-    const newPoll = {
-        isGame: true,
-        isClosed: false,
+const startNewGame = async (res, requestBody) => {
+    const existingPoll = await polls.getByChannel({
         teamId: requestBody.team_id,
-        teamName: requestBody.team_domain,
         channelId: requestBody.channel_id,
-        channelName: requestBody.channel_name,
-        choices: [{
-                index: 1,
-                name: 'Im in!',
-                votes: []
-            },
-            {
-                index: 2,
-                name: 'Not this time.',
-                votes: []
-            }
-        ],
-        pollTitle: "New Game Anyone?"
-    };
-    polls.createPoll(newPoll).then((result) => {
-        if (result.rowCount != 1) {
-            resFunc.sendErrorResponse(res);
-        } else {
-            resFunc.sendPublicResponse(res, `Poll Created!\n${pollFuncs.getFormattedPollResults(newPoll, false)}`);
-        }
-    }).catch(err => {
-        logger.logError(err);
-        resFunc.sendErrorResponse(res);
+        isClosed: false,
     });
+    if (existingPoll) {
+        resFunc.sendResponse(res, 'Only one poll at a time people.');
+    } else {
+        const newPoll = {
+            isGame: true,
+            isClosed: false,
+            teamId: requestBody.team_id,
+            teamName: requestBody.team_domain,
+            channelId: requestBody.channel_id,
+            channelName: requestBody.channel_name,
+            choices: [{
+                    index: 1,
+                    name: 'Im in!',
+                    votes: []
+                },
+                {
+                    index: 2,
+                    name: 'Not this time.',
+                    votes: []
+                }
+            ],
+            pollTitle: "New Game Anyone?"
+        };
+        polls.createPoll(newPoll).then((result) => {
+            if (result.rowCount != 1) {
+                resFunc.sendErrorResponse(res);
+            } else {
+                resFunc.sendPublicResponse(res, `Poll Created!\n${pollFuncs.getFormattedPollResults(newPoll, false)}`);
+            }
+        }).catch(err => {
+            logger.logError(err);
+            resFunc.sendErrorResponse(res);
+        });
+    }
 }
 
-const closeNewGamePoll = (res, responseUrl, poll) => {
-    res.status(200).send();
+const closeNewGamePoll = async (requestBody, poll) => {
 
-    // Create game in db
-    // Add players to db
-    // notify mod that the game is ready to begin
-    const roles = assignRoles(poll, ['seer', 'doc', 'mason', 'mason']);
+    const gameId = await games.insertGame({
+        game_name: 'New Game!',
+        team_name: requestBody.team_domain,
+        team_id: requestBody.team_id,
+        channel_name: requestBody.channel_name,
+        channel_id: requestBody.channel_id,
+        is_running: true
+    });
+
+    await players.insertPlayers({
+        gameId: gameId[0].id, 
+        teamId: requestBody.team_id, 
+        players: poll.choices[0].votes
+    });
+
+    const responseString = getFormattedPlayers(poll.choices[0].votes);
+    
     request.post({
-        url: responseUrl,
+        url: requestBody.response_url,
         json: true,
         body: {
-            text: getFormattedRoles(roles) || 'You need more than 1 player...\nPoll has been closed.'
+            text: responseString || 'You need more than 1 player...\nPoll has been closed.'
         }
     }, (error, response, rawBody) => {
         if (error) {
             console.log(error);
         }
     });
-    notifyPlayers(roles);
+
+    // Add players to db
+    // notify mod that the game is ready to begin
+
+
+    // const roles = assignRoles(poll, ['seer', 'doc', 'mason', 'mason']);
+    // request.post({
+    //     url: responseUrl,
+    //     json: true,
+    //     body: {
+    //         text: getFormattedRoles(roles) || 'You need more than 1 player...\nPoll has been closed.'
+    //     }
+    // }, (error, response, rawBody) => {
+    //     if (error) {
+    //         console.log(error);
+    //     }
+    // });
+    // notifyPlayers(roles);
 
     // Keeping this around for later
     //
@@ -101,6 +141,20 @@ const closeNewGamePoll = (res, responseUrl, poll) => {
     //         }
     //     }
     // });
+}
+
+const getFormattedPlayers = (players) => {
+    if (!players || players.length < 2) {
+        return false;
+    }
+    let roleDisplay = 'Players: \n';
+    logger.logInfo(`Players: ${JSON.stringify(players)}`);
+    players.sort((a, b) => a.playerId - b.playerId);
+    players.forEach((player) => {
+        roleDisplay += `\t<@${player.playerId}>`;
+        roleDisplay += `\n`;
+    });
+    return roleDisplay;
 }
 
 const getFormattedRoles = (players) => {

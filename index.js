@@ -69,7 +69,7 @@ app.post('/', async (req, res) => {
                         if (response.length > 0) {
                             const poll = pollFuncs.getPollfromResultRows(response);
                             if (poll.isGame) {
-                                gameFuncs.closeNewGamePoll(res, requestBody.response_url, poll);
+                                gameFuncs.closeNewGamePoll(requestBody, poll);
                             } else {
                                 const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(poll)}`;
                                 resFuncs.sendDelayedPublicResponse(requestBody.response_url, pollResults);
