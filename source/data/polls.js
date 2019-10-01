@@ -113,11 +113,24 @@ const closePoll = async req => {
         });
 };
 
+const updateByChannel = async req => {
+    const { teamId, channelId, ksClose } = req;
+    return db
+        .query(
+            'UPDATE polls SET killshot_close = $1 where team_id= $2 and channel_id =$3 and is_closed = $4',
+            [ksClose, teamId, channelId, false]
+        )
+        .then(results => {
+            return results.rows[0];
+        });
+};
+
 module.exports = {
     getAll,
     getByChannel,
     getByChannelWithResults,
     getByIdWithResults,
     createPoll,
-    closePoll
+    closePoll,
+    updateByChannel
 };
