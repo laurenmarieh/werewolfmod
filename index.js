@@ -63,29 +63,7 @@ app.post('/', async (req, res) => {
                         break;
                     case 'close':
                         resFuncs.sendResponse(res, 'We are working on closing your poll.');
-                        const pollId = await polls.closePoll({
-                            teamId: requestBody.team_id,
-                            teamName: requestBody.team_domain,
-                            channelId: requestBody.channel_id,
-                            channelName: requestBody.channel_name
-                        });
-                        const response = await polls.getByIdWithResults(pollId);
-                        if (response.length > 0) {
-                            const poll = pollFuncs.getPollfromResultRows(response);
-                            if (poll.isGame) {
-                                gameFuncs.closeNewGamePoll(res, requestBody.response_url, poll);
-                            } else {
-                                const pollResults = `Poll closed! \n${pollFuncs.getFormattedPollResults(
-                                    poll
-                                )}`;
-                                resFuncs.sendDelayedPublicResponse(
-                                    requestBody.response_url,
-                                    pollResults
-                                );
-                            }
-                        } else {
-                            res.status(500).send(response);
-                        }
+                        pollFuncs.close();
                         break;
                     case 'vote':
                         pollFuncs.vote(res, requestBody, commandArray);
@@ -96,6 +74,9 @@ app.post('/', async (req, res) => {
                     case 'rescind':
                     case 'repeal':
                         pollFuncs.unvote(res, requestBody);
+                        break;
+                    case 'options': 
+                        pollFuncs.changeOptions(res, requestBody);
                         break;
                     default:
                         resFuncs.sendErrorResponse(res);
