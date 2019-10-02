@@ -63,7 +63,7 @@ app.post('/', async (req, res) => {
                         break;
                     case 'close':
                         resFuncs.sendResponse(res, 'We are working on closing your poll.');
-                        pollFuncs.close();
+                        pollFuncs.close(res, requestBody);
                         break;
                     case 'vote':
                         pollFuncs.vote(res, requestBody, commandArray);
