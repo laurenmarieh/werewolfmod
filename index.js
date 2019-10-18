@@ -34,6 +34,7 @@ app.post('/', async (req, res) => {
         case '/ww':
         case '/we':
         case '/werewolf':
+        case '/straw':
             const requestBody = req.body;
             const commandArray = requestBody.text.split(' ');
             if (commandArray.length) {
