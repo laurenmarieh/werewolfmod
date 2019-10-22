@@ -158,9 +158,75 @@ const getFormattedPollResults = (poll, showVotes = true) => {
         } else {
             displayText += '\n';
         }
-    });
-    return displayText;
+    },
+        {
+            type: 'divider'
+        },
+    )
 };
+
+poll.choices.options.forEach((option, index) => {
+    displayText.blocks.push({
+        type: 'section',
+        text: {
+            type: 'mrkdwn',
+            text: `${option.index}. *${option.name}*`
+        },
+        accessory: {
+            type: 'button',
+            text: {
+                type: 'plain_text',
+                emoji: true,
+                text: 'Vote'
+            },
+            value: 'click_me_123'
+        }
+    });
+
+    if (showVotes) {
+        console.log(option);
+        if (option.votes.length > 0) {
+            displayText.blocks.push({
+                type: 'context',
+                elements: [
+                    {
+                        type: 'image',
+                        image_url: `'https://api.slack.com/img/blocks/bkb_template_images/profile_1.png'`,
+                        alt_text: 'ji'
+                    }
+                ]
+            });
+            // option.votes.forEach(vote => {
+            //   console.log(
+            //     'display text: ' +
+            //       JSON.stringify(displayText.blocks[index + 3 + index])
+            //   );
+            //   console.log(
+            //     'elements: ' + displayText.blocks[index + 3 + index].elements
+            //   );
+            //   console.log('index ' + index);
+            //   displayText.blocks[index + 3 + index].elements.push({
+            //     type: 'image',
+            //     image_url:
+            //       'https://api.slack.com/img/blocks/bkb_template_images/profile_1.png',
+            //     alt_text: 'voter 1'
+            //   });
+            // });
+            // displayText.blocks[index + 3 + index].elements.push({
+            //   type: 'plain_text',
+            //   emoji: true,
+            //   text: `4 votes`
+            // });
+        }
+    }
+});
+
+displayText.blocks.push({
+    type: 'divider'
+});
+
+return displayText;
+
 
 const changeOptions = async (res, requestBody) => {
     const textArray = requestBody.text.split(' ');
