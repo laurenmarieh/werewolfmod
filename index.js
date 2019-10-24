@@ -66,9 +66,11 @@ app.post('/', async (req, res) => {
                         resFuncs.sendResponse(res, 'We are working on closing your poll.');
                         pollFuncs.close(res, requestBody);
                         break;
+                    case 'v':
                     case 'vote':
                         pollFuncs.vote(res, requestBody, commandArray);
                         break;
+                    case 'uv':
                     case 'unvote':
                     case 'remove':
                     case 'annul':
@@ -76,7 +78,7 @@ app.post('/', async (req, res) => {
                     case 'repeal':
                         pollFuncs.unvote(res, requestBody);
                         break;
-                    case 'options': 
+                    case 'options':
                         pollFuncs.changeOptions(res, requestBody);
                         break;
                     default:
